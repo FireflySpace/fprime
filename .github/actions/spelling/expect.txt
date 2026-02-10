@@ -99,6 +99,7 @@ CHNG
 CHUNKLIST
 chunklist
 CIRCULARSTATE
+clist
 Clist
 CLOSEFILE
 cloudbees
@@ -257,7 +258,7 @@ feq
 fetchcontent
 ffff
 Ffs
-fge
+fgeSaved in AustinF
 fgt
 FILEDISPATCHER
 FILEDISPATCHERCFG
