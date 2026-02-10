@@ -258,7 +258,7 @@ feq
 fetchcontent
 ffff
 Ffs
-fgeSaved in AustinF
+fge
 fgt
 FILEDISPATCHER
 FILEDISPATCHERCFG
@@ -623,6 +623,7 @@ RBF
 rbt
 RCHILD
 rcvd
+recvd
 rdwr
 Readback
 Recvd
