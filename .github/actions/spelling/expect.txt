@@ -1,5 +1,6 @@
 Aadil
 AArray
+acknak
 AClass
 ACTIVERATEGROUP
 ACTIVERATEGROUPCFG
@@ -77,6 +78,7 @@ CBLOCK
 CCACHE
 CCB
 CComponent
+CCs
 ccsds
 ccsparc
 cdh
@@ -85,6 +87,8 @@ CDHCORESUBTOPOLOGY
 cerrno
 CFDP
 Cfdp
+CFDPMANAGER
+CFDPTIMER
 cff
 cflag
 cfsetispeed
@@ -94,6 +98,8 @@ Chieu
 CHIPINFO
 CHK
 CHNG
+CHUNKLIST
+chunklist
 CIRCULARSTATE
 Clist
 CLOSEFILE
@@ -171,12 +177,14 @@ deployables
 DEPRECATEDLIST
 deser
 Deserial
+destq
 DEVICESM
 DHTML
 diafile
 diffs
 diles
 dinkel
+diropen
 dnf
 dnp
 docbook
@@ -214,6 +222,10 @@ eay
 ECLIPSEHELP
 EEnum
 EHAs
+EID
+Eid
+eid
+EIDs
 eip
 Elts
 emptydir
@@ -224,6 +236,7 @@ endraw
 enduml
 EPP
 epp
+eod
 ERRORCHECK
 errornum
 ert
@@ -239,6 +252,8 @@ exploitability
 externalproject
 FAKELOGGER
 fbuild
+fdir
+fdirective
 FDISP
 fdp
 featherm
@@ -256,6 +271,8 @@ FILEDISPATCHERCFG
 FILEDOWNLINK
 FILEDOWNLINKCFG
 FILEHANDLING
+FILEHANDLINGCFDP
+FILEHANDLINGCFDPSUBTOPOLOGY
 FILEHANDLINGSUBTOPOLOGY
 FILEID
 FILEMANAGERCONFIG
@@ -263,11 +280,18 @@ FILEOPENERROR
 FILETESTER
 FILEWORKER
 FILEWORKERTYPES
+FILESTORE
+Filestore
+filestore
 FILEWRITEERROR
+FINACK
+finack
 fio
 fle
+fnames
 FNDELAY
 fne
+foffs
 fontcolor
 FONTPATH
 foodoodie
@@ -291,6 +315,7 @@ freeram
 Fregoso
 frsize
 fsblkcnt
+fsize
 fsw
 FWCASSERT
 gcda
@@ -317,6 +342,7 @@ Graphviz
 grayscales
 GROUNDINTERFACERULES
 GSE
+GSW
 gtags
 gtest
 gtimeout
@@ -428,6 +454,7 @@ lseek
 LTK
 lvar
 LVL
+LVs
 lxml
 MACROFILE
 MACROSTART
@@ -471,6 +498,7 @@ Mutexed
 muxed
 mycompany
 myos
+NAKs
 nasafprime
 nbits
 ncsl
@@ -538,11 +566,14 @@ PASSIVERATEGROUP
 PASSIVERATEGROUPIMPLTESTER
 patsubst
 pdflatex
+Pdu
 pdu
+PDUs
+Pdus
+pdus
 Peet
 penv
 PERLMOD
-Pdu
 PHASERMEMBEROUT
 PINGENTRIES
 PINGSEND
@@ -551,6 +582,7 @@ PKTS
 plainnat
 plantuml
 PNGs
+polldir
 pollfd
 POLLIN
 POLYDB
@@ -582,8 +614,10 @@ projectnumber
 propget
 propput
 protothreading
+psn
 ptbool
 ptf
+PTFO
 pthread
 ptrt
 pvn
@@ -593,6 +627,7 @@ QHG
 qhp
 qsf
 racheljt
+queueidx
 RAII
 randtbl
 raspberrypi
@@ -627,11 +662,14 @@ ROOTDIR
 rowspan
 rpi
 rptr
+rsp
+RSubstate
 SAlias
 sanitizers
 sats
 SBF
 SBINDIR
+sbintf
 sbom
 scid
 scm
@@ -684,7 +722,9 @@ sqa
 srandom
 SRCS
 sreddy
+sret
 sss
+SSubstate
 STAMEM
 startuml
 stdbool
@@ -717,6 +757,8 @@ tabdnp
 tabkermit
 tagfile
 tbase
+tbd
+tbl
 tcanham
 tcflush
 tcgetattr
@@ -756,6 +798,10 @@ TLMPACKETIZER
 TLMPACKETIZERCOMPONENTIMPLCFG
 TLMPACKETIZERTYPES
 Tlv
+tlv
+TLVs
+Tlvs
+tlvs
 TODOLIST
 TOKENBUCKETTESTER
 topologydefs
@@ -763,9 +809,17 @@ totalram
 tparam
 TPP
 trinomials
+TSN
+Tsn
+tsn
 tts
 Tumbar
 tumbar
+txa
+Txm
+txm
+TXW
+txw
 typedef
 typedef'ed
 uart
@@ -775,6 +829,7 @@ uge
 uitofp
 UML
 umod
+unack
 unconfigured
 UNEXP
 unistd
@@ -807,6 +862,7 @@ WORKDIR
 wrs
 wxgui
 wxy
+XACT
 Xapian
 XBee
 xdf
@@ -816,3 +872,4 @@ xxxx
 XXYY
 ziext
 zimri
+
