@@ -26,7 +26,10 @@ void connectPorts(Svc::EventManager& impl, Svc::EventManagerTester& tester) {
     impl.set_Log_OutputPort(0, tester.get_from_Log(0));
     impl.set_LogText_OutputPort(0, tester.get_from_LogText(0));
 
-    impl.set_PktSend_OutputPort(0, tester.get_from_PktSend(0));
+    // Connect all severity-indexed PktSend ports
+    for (FwIndexType i = 0; i < Svc::EventManager::NUM_SEVERITY_PORTS; i++) {
+        impl.set_PktSend_OutputPort(i, tester.get_from_PktSend(i));
+    }
 
 #if FW_PORT_TRACING
     // Fw::PortBase::setTrace(true);
@@ -87,7 +90,7 @@ TEST(EventManagerTest, FilterIdTest) {
 }
 
 TEST(EventManagerTest, FilterDumpTest) {
-    TEST_CASE(100.1.3, "Dump filter values");
+    TEST_CASE(100.1.4, "Dump filter values");
 
     Svc::EventManager impl("EventManager");
 

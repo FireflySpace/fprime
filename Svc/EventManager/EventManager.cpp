@@ -38,6 +38,10 @@ EventManager::EventManager(const char* name) : EventManagerComponentBase(name) {
 
 EventManager::~EventManager() {}
 
+void EventManager::configure(bool severitySplit) {
+    m_severitySplit = severitySplit;
+}
+
 void EventManager::LogRecv_handler(FwIndexType portNum,
                                    FwEventIdType id,
                                    Fw::Time& timeTag,
@@ -114,8 +118,14 @@ void EventManager::loqQueue_internalInterfaceHandler(FwEventIdType id,
     Fw::SerializeStatus stat = this->m_logPacket.serializeTo(this->m_comBuffer);
     FW_ASSERT(Fw::FW_SERIALIZE_OK == stat, static_cast<FwAssertArgType>(stat));
 
-    if (this->isConnected_PktSend_OutputPort(0)) {
-        this->PktSend_out(0, this->m_comBuffer, 0);
+    // Port index = severity value
+    FwIndexType portIdx = static_cast<FwIndexType>(severity.e);
+    if (m_severitySplit == false) {
+        portIdx = 0;
+    }
+
+    if (this->isConnected_PktSend_OutputPort(portIdx)) {
+        this->PktSend_out(portIdx, this->m_comBuffer, 0);
     }
 }
 

@@ -40,6 +40,7 @@ class EventManagerTester : public Svc::EventManagerGTestBase {
     Svc::EventManager& m_impl;
 
     bool m_receivedPacket;
+    FwIndexType m_receivedPortNum;  //!< Port on which the last packet arrived
     Fw::ComBuffer m_sentPacket;
 
     bool m_receivedFatalEvent;

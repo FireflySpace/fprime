@@ -19,6 +19,8 @@ class EventManager final : public EventManagerComponentBase {
     EventManager(const char* compName);  //!< constructor
     virtual ~EventManager();             //!< destructor
 
+    void configure(bool severitySplit);
+
   private:
     void LogRecv_handler(FwIndexType portNum,
                          FwEventIdType id,
@@ -64,6 +66,9 @@ class EventManager final : public EventManagerComponentBase {
     // array of filtered event IDs.
     // value of 0 means no entry
     FwEventIdType m_filteredIDs[TELEM_ID_FILTER_SIZE];
+
+    // Backwards Compatible Single output index vs Severity split onto diff output port indexes
+    bool m_severitySplit = false;
 };
 
 }  // namespace Svc

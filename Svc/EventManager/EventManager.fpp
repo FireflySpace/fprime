@@ -47,7 +47,7 @@ module Svc {
     sync input port LogRecv: Fw.Log
 
     @ Packet send port
-    output port PktSend: Fw.Com
+    output port PktSend: [Fw.LogSeverity.NUM_SEVERITIES] Fw.Com
 
     @ FATAL event announce port
     output port FatalAnnounce: Svc.FatalEvent

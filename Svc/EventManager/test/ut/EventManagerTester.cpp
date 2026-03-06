@@ -23,6 +23,7 @@ EventManagerTester::EventManagerTester(Svc::EventManager& inst)
     : Svc::EventManagerGTestBase("testerbase", 100),
       m_impl(inst),
       m_receivedPacket(false),
+      m_receivedPortNum(-1),
       m_receivedFatalEvent(false) {}
 
 EventManagerTester::~EventManagerTester() {
@@ -35,6 +36,7 @@ void EventManagerTester::from_PktSend_handler(const FwIndexType portNum,  //!< T
 ) {
     this->m_sentPacket = data;
     this->m_receivedPacket = true;
+    this->m_receivedPortNum = portNum;
 }
 
 void EventManagerTester::from_FatalAnnounce_handler(const FwIndexType portNum,  //!< The port number
@@ -363,6 +365,7 @@ void EventManagerTester::runEventFatal() {
     Fw::Time timeTag(TimeBase::TB_NONE, 0, 0);
 
     this->m_receivedPacket = false;
+    this->m_receivedPortNum = -1;
 
     this->invoke_to_LogRecv(0, id, timeTag, Fw::LogSeverity::FATAL, buff);
 
