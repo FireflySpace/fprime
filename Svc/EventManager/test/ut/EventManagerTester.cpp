@@ -98,6 +98,7 @@ void EventManagerTester::runWithFilters(Fw::LogSeverity filter) {
     ASSERT_CMD_RESPONSE(0, EventManager::OPCODE_SET_EVENT_FILTER, cmdSeq, Fw::CmdResponse::OK);
 
     this->m_receivedPacket = false;
+    this->m_receivedPortNum = -1;
 
     this->invoke_to_LogRecv(0, id, timeTag, filter, buff);
 
@@ -107,6 +108,8 @@ void EventManagerTester::runWithFilters(Fw::LogSeverity filter) {
     this->m_impl.doDispatch();
     // should have received packet
     ASSERT_TRUE(this->m_receivedPacket);
+    // verify port index matches severity
+    ASSERT_EQ(this->m_receivedPortNum, static_cast<FwIndexType>(filter.e));
     // verify contents
     // first piece should be log packet descriptor
     FwPacketDescriptorType desc;
@@ -239,7 +242,7 @@ void EventManagerTester::runFilterIdNominal() {
         ASSERT_FALSE(this->m_receivedPacket);
     }
 
-    // send one of the IDs as a FATAL, it should not be filtered event thought the ID is in the filter
+    // send one of the IDs as a FATAL, it should not be filtered even though the ID is in the filter
     this->clearHistory();
     this->clearEvents();
 
@@ -258,6 +261,8 @@ void EventManagerTester::runFilterIdNominal() {
 
     // should get a packet anyway
     ASSERT_TRUE(this->m_receivedPacket);
+    // FATAL must be on port 0
+    ASSERT_EQ(this->m_receivedPortNum, static_cast<FwIndexType>(0));
 
     // Try to add to the full filter. It should be rejected
     this->clearHistory();
@@ -378,6 +383,7 @@ void EventManagerTester::runEventFatal() {
     this->m_impl.doDispatch();
     // should have received packet
     ASSERT_TRUE(this->m_receivedPacket);
+    ASSERT_EQ(this->m_receivedPortNum, static_cast<FwIndexType>(0));
     // verify contents
     // first piece should be log packet descriptor
     FwPacketDescriptorType desc;
@@ -416,6 +422,7 @@ void EventManagerTester::runEventFatal() {
     this->sendCmd_SET_EVENT_FILTER(0, cmdSeq, FilterSeverity::DIAGNOSTIC, Enabled::DISABLED);
 
     this->m_receivedPacket = false;
+    this->m_receivedPortNum = -1;
 
     this->invoke_to_LogRecv(0, id, timeTag, Fw::LogSeverity::FATAL, buff);
 
@@ -425,6 +432,7 @@ void EventManagerTester::runEventFatal() {
     this->m_impl.doDispatch();
     // should have received packet
     ASSERT_TRUE(this->m_receivedPacket);
+    ASSERT_EQ(this->m_receivedPortNum, static_cast<FwIndexType>(0));
     // verify contents
     // first piece should be log packet descriptor
     stat = this->m_sentPacket.deserializeTo(desc);
@@ -463,6 +471,7 @@ void EventManagerTester::writeEvent(FwEventIdType id, Fw::LogSeverity severity, 
     Fw::Time timeTag(TimeBase::TB_NONE, 1, 2);
 
     this->m_receivedPacket = false;
+    this->m_receivedPortNum = -1;
 
     this->invoke_to_LogRecv(0, id, timeTag, severity, buff);
 
@@ -472,6 +481,8 @@ void EventManagerTester::writeEvent(FwEventIdType id, Fw::LogSeverity severity, 
     this->m_impl.doDispatch();
     // should have received packet
     ASSERT_TRUE(this->m_receivedPacket);
+    // verify packet arrives on the correct severity port
+    ASSERT_EQ(this->m_receivedPortNum, static_cast<FwIndexType>(severity.e));
     // verify contents
     // first piece should be log packet descriptor
     FwPacketDescriptorType desc;
@@ -528,13 +539,108 @@ void EventManagerTester::readEvent(FwEventIdType id, Fw::LogSeverity severity, U
     ASSERT_EQ(value, readValue);
 }
 
-void EventManagerTester::textLogIn(const FwEventIdType id,          //!< The event ID
-                                   const Fw::Time& timeTag,         //!< The time
-                                   const Fw::LogSeverity severity,  //!< The severity
-                                   const Fw::TextLogString& text    //!< The event string
-) {
-    TextLogEntry e = {id, timeTag, severity, text};
+// ---------------------------------------------------------------------------
+// runSeverityPortRouting (new Red-phase test)
+//   Verifies that every Fw::LogSeverity value is routed to port severity.e.
+// ---------------------------------------------------------------------------
+void EventManagerTester::runSeverityPortRouting() {
+    REQUIREMENT("AL-005");
 
+    // Ensure all severities pass the filter
+    U32 cmdSeq = 99;
+    this->sendCmd_SET_EVENT_FILTER(0, cmdSeq, FilterSeverity::DIAGNOSTIC, Enabled::ENABLED);
+
+    struct TestCase {
+        Fw::LogSeverity severity;
+        FwIndexType expectedPort;
+    };
+
+    // Fw::LogSeverity: FATAL=1, WARNING_HI=2, WARNING_LO=3, COMMAND=4,
+    //                  ACTIVITY_HI=5, ACTIVITY_LO=6, DIAGNOSTIC=7
+    const TestCase cases[] = {
+        {Fw::LogSeverity::FATAL, 1},      {Fw::LogSeverity::WARNING_HI, 2},  {Fw::LogSeverity::WARNING_LO, 3},
+        {Fw::LogSeverity::COMMAND, 4},    {Fw::LogSeverity::ACTIVITY_HI, 5}, {Fw::LogSeverity::ACTIVITY_LO, 6},
+        {Fw::LogSeverity::DIAGNOSTIC, 7},
+    };
+
+    for (const auto& tc : cases) {
+        this->clearHistory();
+        FwEventIdType id = 42;
+
+        Fw::LogBuffer buff;
+        U32 val = 5;
+        ASSERT_EQ(Fw::FW_SERIALIZE_OK, buff.serializeFrom(val));
+        Fw::Time timeTag(TimeBase::TB_NONE, 0, 0);
+
+        this->m_receivedPacket = false;
+        this->m_receivedPortNum = -1;
+
+        this->invoke_to_LogRecv(0, id, timeTag, tc.severity, buff);
+        this->m_impl.doDispatch();
+
+        ASSERT_TRUE(this->m_receivedPacket) << "No packet for severity " << tc.severity.e;
+        ASSERT_EQ(this->m_receivedPortNum, tc.expectedPort)
+            << "Wrong port for severity " << tc.severity.e << ": expected " << tc.expectedPort << ", got "
+            << this->m_receivedPortNum;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// runMinSeverityFilter (new Red-phase test)
+//   Verifies per-level filter: disabling COMMAND and below leaves only
+//   FATAL / WARNING_HI / WARNING_LO forwarded.
+// ---------------------------------------------------------------------------
+void EventManagerTester::runMinSeverityFilter() {
+    REQUIREMENT("AL-006");
+
+    U32 cmdSeq = 98;
+
+    this->clearHistory();
+    this->sendCmd_SET_EVENT_FILTER(0, cmdSeq, FilterSeverity::COMMAND, Enabled::DISABLED);
+    ASSERT_CMD_RESPONSE_SIZE(1);
+    ASSERT_CMD_RESPONSE(0, EventManager::OPCODE_SET_EVENT_FILTER, cmdSeq, Fw::CmdResponse::OK);
+    this->sendCmd_SET_EVENT_FILTER(0, cmdSeq, FilterSeverity::ACTIVITY_HI, Enabled::DISABLED);
+    this->sendCmd_SET_EVENT_FILTER(0, cmdSeq, FilterSeverity::ACTIVITY_LO, Enabled::DISABLED);
+
+    Fw::LogBuffer buff;
+    U32 val = 7;
+    FwEventIdType id = 55;
+    ASSERT_EQ(Fw::FW_SERIALIZE_OK, buff.serializeFrom(val));
+    Fw::Time timeTag(TimeBase::TB_NONE, 0, 0);
+
+    // These must pass
+    const Fw::LogSeverity passing[] = {
+        Fw::LogSeverity::FATAL,
+        Fw::LogSeverity::WARNING_HI,
+        Fw::LogSeverity::WARNING_LO,
+    };
+    for (const auto& sev : passing) {
+        this->m_receivedPacket = false;
+        this->invoke_to_LogRecv(0, id, timeTag, sev, buff);
+        this->m_impl.doDispatch();
+        ASSERT_TRUE(this->m_receivedPacket) << "Expected forwarded packet for severity " << sev.e;
+        ASSERT_EQ(this->m_receivedPortNum, static_cast<FwIndexType>(0));
+    }
+
+    // These must be dropped
+    const Fw::LogSeverity dropping[] = {
+        Fw::LogSeverity::COMMAND,
+        Fw::LogSeverity::ACTIVITY_HI,
+        Fw::LogSeverity::ACTIVITY_LO,
+        Fw::LogSeverity::DIAGNOSTIC,
+    };
+    for (const auto& sev : dropping) {
+        this->m_receivedPacket = false;
+        this->invoke_to_LogRecv(0, id, timeTag, sev, buff);
+        ASSERT_FALSE(this->m_receivedPacket) << "Unexpected forwarded packet for severity " << sev.e;
+    }
+}
+
+void EventManagerTester::textLogIn(const FwEventIdType id,
+                                   const Fw::Time& timeTag,
+                                   const Fw::LogSeverity severity,
+                                   const Fw::TextLogString& text) {
+    TextLogEntry e = {id, timeTag, severity, text};
     printTextLogHistoryEntry(e, stdout);
 }
 void EventManagerTester ::from_pingOut_handler(const FwIndexType portNum, U32 key) {
