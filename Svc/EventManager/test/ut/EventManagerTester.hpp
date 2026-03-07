@@ -19,6 +19,9 @@ class EventManagerTester : public Svc::EventManagerGTestBase {
     explicit EventManagerTester(Svc::EventManager& inst);
     virtual ~EventManagerTester();
 
+    // ------------------------------------------------------------------
+    // Original test cases (Single output port tests)
+    // ------------------------------------------------------------------
     void runEventNominal();
     void runFilterEventNominal();
     void runFilterIdNominal();
@@ -27,6 +30,20 @@ class EventManagerTester : public Svc::EventManagerGTestBase {
     void runEventFatal();
     void runFileDump();
     void runFileDumpErrors();
+
+    // ------------------------------------------------------------------
+    // New test cases (Separate port per severity)
+    // ------------------------------------------------------------------
+
+    //! Each severity is routed to the correct PktSend port index.
+    //! Port index = Fw::LogSeverity::value - 1.
+    void runSeverityPortRouting();
+
+    //! SET_EVENT_FILTER(level, ENABLED) sets minimum-severity threshold so
+    //! events at that level and more severe are forwarded.
+    //! SET_EVENT_FILTER(level, DISABLED) raises the threshold so events at
+    //! that level and less severe are dropped (FilterMode == 1 only).
+    void runMinSeverityFilter();
 
   private:
     void from_PktSend_handler(const FwIndexType portNum,  //!< The port number
@@ -40,6 +57,7 @@ class EventManagerTester : public Svc::EventManagerGTestBase {
     Svc::EventManager& m_impl;
 
     bool m_receivedPacket;
+    FwIndexType m_receivedPortNum;  //!< Port on which the last packet arrived
     Fw::ComBuffer m_sentPacket;
 
     bool m_receivedFatalEvent;

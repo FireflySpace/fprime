@@ -26,7 +26,10 @@ void connectPorts(Svc::EventManager& impl, Svc::EventManagerTester& tester) {
     impl.set_Log_OutputPort(0, tester.get_from_Log(0));
     impl.set_LogText_OutputPort(0, tester.get_from_LogText(0));
 
-    impl.set_PktSend_OutputPort(0, tester.get_from_PktSend(0));
+    // Connect all severity-indexed PktSend ports
+    for (FwIndexType i = 0; i < static_cast<FwIndexType>(Fw::LogSeverity::NUM_SEVERITIES); i++) {
+        impl.set_PktSend_OutputPort(i, tester.get_from_PktSend(i));
+    }
 
 #if FW_PORT_TRACING
     // Fw::PortBase::setTrace(true);
@@ -49,6 +52,8 @@ TEST(EventManagerTest, NominalEventSend) {
     // connect ports
     connectPorts(impl, tester);
 
+    impl.configure(true);
+
     tester.runEventNominal();
 }
 
@@ -65,6 +70,8 @@ TEST(EventManagerTest, FilteredEventSend) {
 
     // connect ports
     connectPorts(impl, tester);
+
+    impl.configure(true);
 
     tester.runFilterEventNominal();
 }
@@ -87,7 +94,7 @@ TEST(EventManagerTest, FilterIdTest) {
 }
 
 TEST(EventManagerTest, FilterDumpTest) {
-    TEST_CASE(100.1.3, "Dump filter values");
+    TEST_CASE(100.1.4, "Dump filter values");
 
     Svc::EventManager impl("EventManager");
 
@@ -135,6 +142,44 @@ TEST(EventManagerTest, FatalTesting) {
     connectPorts(impl, tester);
 
     tester.runEventFatal();
+}
+
+// ---------------------------------------------------------------------------
+// New test cases (Red → Green TDD)
+// ---------------------------------------------------------------------------
+
+TEST(EventManagerTest, SeverityPortRouting) {
+    TEST_CASE(100.3.1, "Each severity routed to correct PktSend port index");
+
+    Svc::EventManager impl("EventManager");
+
+    impl.init(10, 0);
+
+    Svc::EventManagerTester tester(impl);
+
+    tester.init();
+
+    connectPorts(impl, tester);
+
+    impl.configure(true);
+
+    tester.runSeverityPortRouting();
+}
+
+TEST(EventManagerTest, MinSeverityFilter) {
+    TEST_CASE(100.3.2, "Minimum-severity threshold drops events below threshold");
+
+    Svc::EventManager impl("EventManager");
+
+    impl.init(10, 0);
+
+    Svc::EventManagerTester tester(impl);
+
+    tester.init();
+
+    connectPorts(impl, tester);
+
+    tester.runMinSeverityFilter();
 }
 
 int main(int argc, char* argv[]) {

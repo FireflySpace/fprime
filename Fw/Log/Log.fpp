@@ -12,6 +12,7 @@ module Fw {
     ACTIVITY_HI = 5 @< Important informational events
     ACTIVITY_LO = 6 @< Less important informational events
     DIAGNOSTIC = 7 @< Software diagnostic events
+    NUM_SEVERITIES = 8 @< Width for an array that uses the native severity value
   }
 
   @ Event log port
