@@ -6,25 +6,29 @@ param LocalEid: Cfdp.EntityId \
 param OutgoingFileChunkSize: U32 \
     default 480
 
-@ The maximum number of received bytes to calculate a CRC for in a single wakeup period
-param RxCrcCalcBytesPerWakeup: U32 \
+@ The maximum number of received bytes to calculate a CRC for in a single scheduler cycle
+param RxCrcCalcBytesPerCycle: U32 \
     default 16384
 
-@ Location to store temporary files during uplink transactions
-param TmpDir: string size MaxFileSize \
-    default "/tmp"
-
-@ Location to store files that were downlinked from a polling directory, but failed
-param FailDir: string size MaxFileSize \
-    default "/fail"
-
-@ Default CFDP channel for port-initiated file transfers
-param PortDefaultChannel: U8 \
+@ Default CFDP channel for fileIn port-initiated file transfers
+param FileInDefaultChannel: U8 \
     default 0
 
-@ Default destination entity ID for port-initiated file transfers
-param PortDefaultDestEntityId: Cfdp.EntityId \
+@ Default destination entity ID for fileIn port-initiated file transfers
+param FileInDefaultDestEntityId: Cfdp.EntityId \
     default 100
+
+@ Default CFDP class for fileIn port-initiated file transfers
+param FileInDefaultClass: Cfdp.Class \
+    default Cfdp.Class.CLASS_2
+
+@ Default file retention policy for fileIn port-initiated file transfers
+param FileInDefaultKeep: Cfdp.Keep \
+    default Cfdp.Keep.DELETE
+
+@ Default priority for fileIn port-initiated file transfers
+param FileInDefaultPriority: U8 \
+    default 0
 
 @ Parameter configuration for an array CFDP channels
 param ChannelConfig: Cfdp.ChannelArrayParams \
@@ -36,7 +40,9 @@ param ChannelConfig: Cfdp.ChannelArrayParams \
             inactivity_timer = 30, \
             dequeue_enabled = Fw.Enabled.ENABLED, \
             move_dir = "", \
-            max_outgoing_pdus_per_cycle = 32 \
+            max_outgoing_pdus_per_cycle = 32, \
+            tmp_dir = "/tmp", \
+            fail_dir = "/fail" \
         }, \
         {
             ack_limit = 4, \
@@ -45,6 +51,8 @@ param ChannelConfig: Cfdp.ChannelArrayParams \
             inactivity_timer = 30, \
             dequeue_enabled = Fw.Enabled.ENABLED, \
             move_dir = "", \
-            max_outgoing_pdus_per_cycle = 32 \
+            max_outgoing_pdus_per_cycle = 32, \
+            tmp_dir = "/tmp", \
+            fail_dir = "/fail" \
         } \
     ]

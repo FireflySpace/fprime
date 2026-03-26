@@ -210,7 +210,7 @@ void Channel::cycleTx()
         // NOTE: tick processing is higher priority than sending new filedata PDUs, so only send however many
         // PDUs that can be sent once we get to here
         if (!this->m_cur)
-        { // don't enter if cur is set, since we need to pick up where we left off on tick processing next wakeup
+        { // don't enter if cur is set, since we need to pick up where we left off on tick processing next scheduler cycle
 
             // TODO BPC: refactor all while loops
             while (true)
@@ -281,7 +281,7 @@ void Channel::tickTransactions()
 
             if (args.early_exit)
             {
-                // early exit means we ran out of available outgoing messages this wakeup.
+                // early exit means we ran out of available outgoing messages this scheduler cycle.
                 // If current tick type is NAK response, then reset tick type. It would be
                 // bad to let NAK response starve out RX or TXW ticks on the next cycle.
                 //
@@ -669,7 +669,7 @@ CfdpChunkWrapper* Channel::findUnusedChunks(Direction dir)
 void Channel::processPlaybackDirectory(Playback* pb)
 {
     Transaction* txn;
-    char path[MaxFileSize];
+    char path[MaxFilePathSize];
     Os::Directory::Status status;
 
     // either there's no transaction (first one) or the last one was finished, so check for a new one
@@ -680,7 +680,7 @@ void Channel::processPlaybackDirectory(Playback* pb)
     {
         if (pb->pending_file[0] == 0)
         {
-            status = pb->dir.read(path, MaxFileSize);
+            status = pb->dir.read(path, MaxFilePathSize);
             if (status == Os::Directory::NO_MORE_FILES)
             {
                 // TODO BPC: Emit playback success EVR

@@ -24,6 +24,7 @@
 #include <Svc/Ccsds/CfdpManager/Types/FlowEnumAc.hpp>
 #include <Svc/Ccsds/CfdpManager/Types/ClassEnumAc.hpp>
 #include <Svc/Ccsds/CfdpManager/Types/KeepEnumAc.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/SuspendResumeEnumAc.hpp>
 #include <Svc/Ccsds/CfdpManager/Types/QueueIdEnumAc.hpp>
 #include <Svc/Ccsds/CfdpManager/Clist.hpp>
 #include <Svc/Ccsds/CfdpManager/Chunk.hpp>
@@ -295,7 +296,7 @@ struct Playback
     U16 num_ts; /**< \brief number of transactions */
     U8 priority;
     EntityId dest_id;
-    char pending_file[MaxFileSize];
+    char pending_file[MaxFilePathSize];
 
     bool busy;
     bool diropen;

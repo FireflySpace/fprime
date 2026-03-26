@@ -198,6 +198,40 @@ class CfdpManager final : public CfdpManagerComponentBase {
         Flow freeze //!< Flow state to set
     ) override;
 
+    //! Handler for command SuspendResumeTransaction
+    //!
+    //! Command to suspend or resume a transaction
+    void SuspendResumeTransaction_cmdHandler(
+        FwOpcodeType opCode, //!< The opcode
+        U32 cmdSeq, //!< The command sequence number
+        U8 channelId, //!< Channel ID for the transaction
+        TransactionSeq transactionSeq, //!< Transaction sequence number
+        EntityId entityId, //!< Entity ID of the transaction
+        SuspendResume action //!< Action to take: SUSPEND or RESUME
+    ) override;
+
+    //! Handler for command CancelTransaction
+    //!
+    //! Command to cancel a transaction with graceful close-out
+    void CancelTransaction_cmdHandler(
+        FwOpcodeType opCode, //!< The opcode
+        U32 cmdSeq, //!< The command sequence number
+        U8 channelId, //!< Channel ID for the transaction
+        TransactionSeq transactionSeq, //!< Transaction sequence number
+        EntityId entityId //!< Entity ID of the transaction
+    ) override;
+
+    //! Handler for command AbandonTransaction
+    //!
+    //! Command to abandon a transaction immediately
+    void AbandonTransaction_cmdHandler(
+        FwOpcodeType opCode, //!< The opcode
+        U32 cmdSeq, //!< The command sequence number
+        U8 channelId, //!< Channel ID for the transaction
+        TransactionSeq transactionSeq, //!< Transaction sequence number
+        EntityId entityId //!< Entity ID of the transaction
+    ) override;
+
   private:
     // ----------------------------------------------------------------------
     // Private command helper functions
@@ -226,20 +260,22 @@ class CfdpManager final : public CfdpManagerComponentBase {
   //! \return Maximum size in bytes for file data segments in outgoing PDUs
   U32 getOutgoingFileChunkSizeParam(void);
 
-  //! Get the RX CRC calculation bytes per wakeup parameter
+  //! Get the RX CRC calculation bytes per scheduler cycle parameter
   //!
   //! \return Number of bytes to process per cycle when calculating received file CRC
-  U32 getRxCrcCalcBytesPerWakeupParam(void);
+  U32 getRxCrcCalcBytesPerCycleParam(void);
 
-  //! Get the temporary directory parameter
+  //! Get the temporary directory parameter for a channel
   //!
+  //! \param channelIndex [in] Index of the channel
   //! \return Path to temporary directory for in-progress file transfers
-  Fw::String getTmpDirParam(void);
+  Fw::String getTmpDirParam(U8 channelIndex);
 
-  //! Get the failure directory parameter
+  //! Get the failure directory parameter for a channel
   //!
+  //! \param channelIndex [in] Index of the channel
   //! \return Path to directory where failed transfers are moved
-  Fw::String getFailDirParam(void);
+  Fw::String getFailDirParam(U8 channelIndex);
 
   //! Get the ACK limit parameter for a channel
   //!

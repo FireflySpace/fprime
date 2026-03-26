@@ -91,23 +91,27 @@ Svc::SendFileResponse CfdpManager ::fileIn_handler(
     }
     else
     {
-        // Get parameters for port-initiated transfers
+        // Get parameters for fileIn port-initiated transfers
         Fw::ParamValid valid;
-        U8 channelId = this->paramGet_PortDefaultChannel(valid);
+        U8 channelId = this->paramGet_FileInDefaultChannel(valid);
         FW_ASSERT(valid != Fw::ParamValid::INVALID && valid != Fw::ParamValid::UNINIT,
                   static_cast<FwAssertArgType>(valid.e));
 
-        EntityId destEid = this->paramGet_PortDefaultDestEntityId(valid);
+        EntityId destEid = this->paramGet_FileInDefaultDestEntityId(valid);
         FW_ASSERT(valid != Fw::ParamValid::INVALID && valid != Fw::ParamValid::UNINIT,
                   static_cast<FwAssertArgType>(valid.e));
 
-        // Use default values for port-initiated transfers
-        // - Class 2 (acknowledged) for reliability
-        // - Keep = KEEP (don't delete after transfer)
-        // - Priority = 0 (highest priority)
-        Class::T cfdpClass = Class::CLASS_2;
-        Keep::T keep = Keep::KEEP;
-        U8 priority = 0;
+        Class::T cfdpClass = this->paramGet_FileInDefaultClass(valid);
+        FW_ASSERT(valid != Fw::ParamValid::INVALID && valid != Fw::ParamValid::UNINIT,
+                  static_cast<FwAssertArgType>(valid.e));
+
+        Keep::T keep = this->paramGet_FileInDefaultKeep(valid);
+        FW_ASSERT(valid != Fw::ParamValid::INVALID && valid != Fw::ParamValid::UNINIT,
+                  static_cast<FwAssertArgType>(valid.e));
+
+        U8 priority = this->paramGet_FileInDefaultPriority(valid);
+        FW_ASSERT(valid != Fw::ParamValid::INVALID && valid != Fw::ParamValid::UNINIT,
+                  static_cast<FwAssertArgType>(valid.e));
 
         // Attempt to initiate the file transfer (mark as port-initiated)
         Status::T status = this->m_engine->txFile(
@@ -338,6 +342,89 @@ void CfdpManager ::SetChannelFlow_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U8
 
 }
 
+void CfdpManager ::SuspendResumeTransaction_cmdHandler(
+    FwOpcodeType opCode,
+    U32 cmdSeq,
+    U8 channelId,
+    TransactionSeq transactionSeq,
+    EntityId entityId,
+    SuspendResume action)
+{
+    Fw::CmdResponse::T rspStatus = Fw::CmdResponse::OK;
+
+    FW_ASSERT(this->m_engine != NULL);
+
+    rspStatus = checkCommandChannelIndex(channelId);
+
+    if (rspStatus == Fw::CmdResponse::OK) {
+        Status::T status = this->m_engine->setSuspendResumeTransaction(channelId, transactionSeq, entityId, action);
+        if (status == Status::SUCCESS) {
+            if (action == SuspendResume::SUSPEND) {
+                log_ACTIVITY_LO_TransactionSuspended(transactionSeq, entityId);
+            } else {
+                log_ACTIVITY_LO_TransactionResumed(transactionSeq, entityId);
+            }
+        } else {
+            log_WARNING_LO_TransactionNotFound(transactionSeq, entityId);
+            rspStatus = Fw::CmdResponse::EXECUTION_ERROR;
+        }
+    }
+
+    this->cmdResponse_out(opCode, cmdSeq, rspStatus);
+}
+
+void CfdpManager ::CancelTransaction_cmdHandler(
+    FwOpcodeType opCode,
+    U32 cmdSeq,
+    U8 channelId,
+    TransactionSeq transactionSeq,
+    EntityId entityId)
+{
+    Fw::CmdResponse::T rspStatus = Fw::CmdResponse::OK;
+
+    FW_ASSERT(this->m_engine != NULL);
+
+    rspStatus = checkCommandChannelIndex(channelId);
+
+    if (rspStatus == Fw::CmdResponse::OK) {
+        Status::T status = this->m_engine->cancelTransactionBySeq(channelId, transactionSeq, entityId);
+        if (status == Status::SUCCESS) {
+            log_ACTIVITY_HI_TransactionCanceled(transactionSeq, entityId);
+        } else {
+            log_WARNING_LO_TransactionNotFound(transactionSeq, entityId);
+            rspStatus = Fw::CmdResponse::EXECUTION_ERROR;
+        }
+    }
+
+    this->cmdResponse_out(opCode, cmdSeq, rspStatus);
+}
+
+void CfdpManager ::AbandonTransaction_cmdHandler(
+    FwOpcodeType opCode,
+    U32 cmdSeq,
+    U8 channelId,
+    TransactionSeq transactionSeq,
+    EntityId entityId)
+{
+    Fw::CmdResponse::T rspStatus = Fw::CmdResponse::OK;
+
+    FW_ASSERT(this->m_engine != NULL);
+
+    rspStatus = checkCommandChannelIndex(channelId);
+
+    if (rspStatus == Fw::CmdResponse::OK) {
+        Status::T status = this->m_engine->abandonTransaction(channelId, transactionSeq, entityId);
+        if (status == Status::SUCCESS) {
+            log_ACTIVITY_HI_TransactionAbandoned(transactionSeq, entityId);
+        } else {
+            log_WARNING_LO_TransactionNotFound(transactionSeq, entityId);
+            rspStatus = Fw::CmdResponse::EXECUTION_ERROR;
+        }
+    }
+
+    this->cmdResponse_out(opCode, cmdSeq, rspStatus);
+}
+
 // ----------------------------------------------------------------------
 // Private command helper functions
 // ----------------------------------------------------------------------
@@ -395,40 +482,48 @@ Fw::CmdResponse::T CfdpManager ::checkCommandChannelPollIndex(U8 pollIndex)
 
     return chunkSize;
   }
-  U32 CfdpManager:: getRxCrcCalcBytesPerWakeupParam(void)
+  U32 CfdpManager:: getRxCrcCalcBytesPerCycleParam(void)
   {
     Fw::ParamValid valid;
-    
+
     // Check for coding errors as all CFDP parameters must have a default
-    U32 rxSize = this->paramGet_RxCrcCalcBytesPerWakeup(valid);
+    U32 rxSize = this->paramGet_RxCrcCalcBytesPerCycle(valid);
     FW_ASSERT(valid != Fw::ParamValid::INVALID && valid != Fw::ParamValid::UNINIT,
               static_cast<FwAssertArgType>(valid.e));
 
     return rxSize;
   }
   
-  Fw::String CfdpManager:: getTmpDirParam(void)
+  Fw::String CfdpManager:: getTmpDirParam(U8 channelIndex)
   {
     Fw::ParamValid valid;
-    
+
+    FW_ASSERT(channelIndex < Cfdp::NumChannels, channelIndex, Cfdp::NumChannels);
+
     // Check for coding errors as all CFDP parameters must have a default
-    Fw::String tmpDir = this->paramGet_TmpDir(valid);
+    // Get the array first
+    ChannelArrayParams paramArray = paramGet_ChannelConfig(valid);
     FW_ASSERT(valid != Fw::ParamValid::INVALID && valid != Fw::ParamValid::UNINIT,
               static_cast<FwAssertArgType>(valid.e));
 
-    return tmpDir;
+    // Now get individual parameter
+    return paramArray[channelIndex].get_tmp_dir();
   }
 
-  Fw::String CfdpManager:: getFailDirParam(void)
+  Fw::String CfdpManager:: getFailDirParam(U8 channelIndex)
   {
     Fw::ParamValid valid;
-    
+
+    FW_ASSERT(channelIndex < Cfdp::NumChannels, channelIndex, Cfdp::NumChannels);
+
     // Check for coding errors as all CFDP parameters must have a default
-    Fw::String failDir = this->paramGet_TmpDir(valid);
+    // Get the array first
+    ChannelArrayParams paramArray = paramGet_ChannelConfig(valid);
     FW_ASSERT(valid != Fw::ParamValid::INVALID && valid != Fw::ParamValid::UNINIT,
               static_cast<FwAssertArgType>(valid.e));
 
-    return failDir;
+    // Now get individual parameter
+    return paramArray[channelIndex].get_fail_dir();
   }
 
   U8 CfdpManager:: getAckLimitParam(U8 channelIndex)

@@ -746,6 +746,57 @@ void Engine::setChannelFlowState(U8 channelId, Flow::T flowState)
     m_channels[channelId]->setFlowState(flowState);
 }
 
+Status::T Engine::setSuspendResumeTransaction(U8 channelId, TransactionSeq transactionSeq, EntityId entityId, SuspendResume::T action)
+{
+    Status::T status = Status::ERROR;
+
+    FW_ASSERT(channelId < Cfdp::NumChannels, channelId, Cfdp::NumChannels);
+
+    Channel* chan = m_channels[channelId];
+    Transaction* txn = chan->findTransactionBySequenceNumber(transactionSeq, entityId);
+
+    if (txn != nullptr) {
+        txn->m_flags.com.suspended = (action == SuspendResume::SUSPEND);
+        status = Status::SUCCESS;
+    }
+
+    return status;
+}
+
+Status::T Engine::cancelTransactionBySeq(U8 channelId, TransactionSeq transactionSeq, EntityId entityId)
+{
+    Status::T status = Status::ERROR;
+
+    FW_ASSERT(channelId < Cfdp::NumChannels, channelId, Cfdp::NumChannels);
+
+    Channel* chan = m_channels[channelId];
+    Transaction* txn = chan->findTransactionBySequenceNumber(transactionSeq, entityId);
+
+    if (txn != nullptr) {
+        this->cancelTransaction(txn);
+        status = Status::SUCCESS;
+    }
+
+    return status;
+}
+
+Status::T Engine::abandonTransaction(U8 channelId, TransactionSeq transactionSeq, EntityId entityId)
+{
+    Status::T status = Status::ERROR;
+
+    FW_ASSERT(channelId < Cfdp::NumChannels, channelId, Cfdp::NumChannels);
+
+    Channel* chan = m_channels[channelId];
+    Transaction* txn = chan->findTransactionBySequenceNumber(transactionSeq, entityId);
+
+    if (txn != nullptr) {
+        this->finishTransaction(txn, false);
+        status = Status::SUCCESS;
+    }
+
+    return status;
+}
+
 void Engine::txFileInitiate(Transaction *txn, Class::T cfdp_class, Keep::T keep, U8 chan,
                              U8 priority, EntityId dest_id)
 {
@@ -1155,7 +1206,7 @@ void Engine::cancelTransaction(Transaction *txn)
 bool Engine::isPollingDir(const char *src_file, U8 chan_num)
 {
     bool return_code = false;
-    char src_dir[MaxFileSize] = "\0";
+    char src_dir[MaxFilePathSize] = "\0";
     CfdpPollDir * pd;
     int i;
 
@@ -1217,7 +1268,7 @@ void Engine::handleNotKeepFile(Transaction *txn)
             if (this->isPollingDir(txn->m_history->fnames.src_filename.toChar(), txn->getChannelId()))
             {
                 // If fail directory is defined attempt move
-                failDir = m_manager->getFailDirParam();
+                failDir = m_manager->getFailDirParam(txn->getChannelId());
                 if(failDir.length() > 0)
                 {
                     fileStatus = Os::FileSystem::moveFile(txn->m_history->fnames.src_filename.toChar(), failDir.toChar());

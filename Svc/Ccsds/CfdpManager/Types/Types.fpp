@@ -39,6 +39,12 @@ module Cfdp {
         KEEP = 1 @< File will be kept after the CFDP transaction
     }
 
+    @ Suspend/resume action
+    enum SuspendResume: U8 {
+        SUSPEND = 0 @< Suspend transaction
+        RESUME  = 1 @< Resume transaction
+    }
+
     @ CFDP queue identifiers
     enum QueueId: U8 {
         PEND = 0, @< first one on this list is active
@@ -58,8 +64,10 @@ module Cfdp {
         ack_timer: U32 @< Acknowledge timer in seconds
         inactivity_timer: U32 @< Inactivity timer in seconds
         dequeue_enabled: Fw.Enabled @< if enabled, then the channel will make pending transactions active
-        move_dir: string size MaxFileSize @< Move directory if not empty
+        move_dir: string size MaxFilePathSize @< Move directory if not empty
         max_outgoing_pdus_per_cycle: U32 @< Maximum number of PDUs to send per cycle per channel for throttling
+        tmp_dir: string size MaxFilePathSize @< Temporary directory for uplink file reception
+        fail_dir: string size MaxFilePathSize @< Directory for failed poll files
     }
 
     @< Structure for the configured array of CFDP channels
