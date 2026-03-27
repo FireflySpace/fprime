@@ -401,6 +401,11 @@ Status::T Transaction::sSendFileData(FileSize foffs, FileSize bytes_to_read, U8 
 
     // Initialize and send PDU
     if (status == Cfdp::Status::SUCCESS) {
+        // File has been read successfully, update cached_pos to reflect new file position
+        // This MUST be done before attempting to send, so if send fails (throttle/error),
+        // we don't try to read the same data again on next cycle
+        this->m_state_data.send.cached_pos += static_cast<FileSize>(actual_bytes);
+
         fdPdu.initialize(
             direction,
             this->getClass(),  // transmission mode
@@ -415,9 +420,8 @@ Status::T Transaction::sSendFileData(FileSize foffs, FileSize bytes_to_read, U8 
         status = this->m_engine->sendFd(this, fdPdu);
     }
 
-    // Update state and CRC
+    // Update CRC and bytes_processed
     if (status == Cfdp::Status::SUCCESS) {
-        this->m_state_data.send.cached_pos += static_cast<FileSize>(actual_bytes);
 
         FW_ASSERT((foffs + actual_bytes) <= this->m_fsize, foffs, static_cast<FwAssertArgType>(actual_bytes), this->m_fsize);
 
@@ -435,7 +439,19 @@ void Transaction::sSubstateSendFileData() {
     FileSize bytes_processed = 0;
     Status::T status = this->sSendFileData(this->m_foffs, (this->m_fsize - this->m_foffs), 1, &bytes_processed);
 
-    if(status != Cfdp::Status::SUCCESS)
+    // When SEND_PDU_NO_BUF_AVAIL_ERROR is returned, it means either:
+    // 1) The throttle limit (max_outgoing_pdus_per_cycle) was reached, OR
+    // 2) Buffer allocation failed
+    // In either case, we should stay in FILEDATA state and retry next cycle.
+    // This is NOT a file I/O error, so we should NOT transition to EOF.
+    // We also need to break the cycleTx loop by setting m_chan->m_currentTxn.
+    if(status == Cfdp::Status::SEND_PDU_NO_BUF_AVAIL_ERROR)
+    {
+        // Throttle limit or buffer exhaustion - stay in FILEDATA, retry next cycle
+        // Set m_currentTxn to break the cycleTx loop for this cycle
+        this->m_chan->setCurrentTxn(this);
+    }
+    else if(status != Cfdp::Status::SUCCESS)
     {
         // IO error -- change state and send EOF
         this->m_engine->setTxnStatus(this, TXN_STATUS_FILESTORE_REJECTION);
@@ -446,7 +462,7 @@ void Transaction::sSubstateSendFileData() {
         this->m_foffs += bytes_processed;
         if (this->m_foffs == this->m_fsize)
         {
-            // file is done
+            // file is done - transition to EOF state, which will be sent in next loop iteration
             this->m_state_data.send.sub_state = TX_SUB_STATE_EOF;
         }
     }
@@ -591,8 +607,17 @@ void Transaction::sSubstateSendMetadata() {
         {
             /* once metadata is sent, switch to filedata mode */
             this->m_state_data.send.sub_state = TX_SUB_STATE_FILEDATA;
+
+            this->m_cfdpManager->log_ACTIVITY_HI_TxFileTransferStarted(
+                this->getClass(),
+                this->m_history->src_eid,
+                this->m_history->fnames.src_filename,
+                this->m_history->peer_eid,
+                this->m_history->fnames.dst_filename,
+                static_cast<U32>(this->m_fsize));
         }
         /* if status==Cfdp::Status::SEND_PDU_NO_BUF_AVAIL_ERROR, then try to send md again next cycle */
+        /* TODO JMP What if status==Cfdp::Status::ERROR*/
     }
 
     if (!success)

@@ -816,13 +816,6 @@ Status::T Engine::abandonTransaction(U8 channelId, TransactionSeq transactionSeq
 void Engine::txFileInitiate(Transaction *txn, Class::T cfdp_class, Keep::T keep, U8 chan,
                              U8 priority, EntityId dest_id)
 {
-    this->m_manager->log_ACTIVITY_HI_TxFileTransferStarted(
-        cfdp_class,
-        m_manager->getLocalEidParam(),
-        txn->m_history->fnames.src_filename,
-        dest_id,
-        txn->m_history->fnames.dst_filename);
-
     txn->initTxFile(cfdp_class, keep, chan, priority);
 
     // Increment sequence number for new transaction
@@ -1110,6 +1103,33 @@ void Engine::finishTransaction(Transaction *txn, bool keep_history)
 
     if (txn->m_history != NULL)
     {
+        // Emit completion events for successful transactions
+        if (!TxnStatusIsError(txn->m_history->txn_stat))
+        {
+            if (txn->m_history->dir == DIRECTION_TX)
+            {
+                this->m_manager->log_ACTIVITY_HI_TxFileTransferCompleted(
+                    txn->m_txn_class,
+                    txn->m_history->src_eid,
+                    txn->m_history->seq_num,
+                    txn->m_history->fnames.src_filename,
+                    txn->m_history->fnames.dst_filename,
+                    static_cast<U32>(txn->m_fsize)
+                );
+            }
+            else if (txn->m_history->dir == DIRECTION_RX)
+            {
+                this->m_manager->log_ACTIVITY_HI_RxFileTransferCompleted(
+                    txn->m_txn_class,
+                    txn->m_history->src_eid,
+                    txn->m_history->seq_num,
+                    txn->m_history->fnames.src_filename,
+                    txn->m_history->fnames.dst_filename,
+                    static_cast<U32>(txn->m_fsize)
+                );
+            }
+        }
+
         this->sendEotPkt(txn);
 
         // extra bookkeeping for tx direction only
