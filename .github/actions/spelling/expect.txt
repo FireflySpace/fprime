@@ -634,7 +634,6 @@ RBF
 rbt
 RCHILD
 rcvd
-recvd
 rdwr
 Readback
 Recvd
