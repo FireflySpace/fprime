@@ -83,8 +83,7 @@ cdh
 CDHCORE
 CDHCORESUBTOPOLOGY
 cerrno
-CFDP
-Cfdp
+cfdp
 CFDPMANAGER
 CFDPTIMER
 cff
@@ -99,7 +98,6 @@ CHNG
 chunklist
 CIRCULARSTATE
 clist
-Clist
 CLOSEFILE
 cloudbees
 CMDDISP
