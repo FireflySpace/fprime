@@ -1,5 +1,6 @@
 Aadil
 AArray
+acknak
 AClass
 ACTIVERATEGROUP
 ACTIVERATEGROUPCFG
@@ -75,13 +76,16 @@ CBLOCK
 CCACHE
 CCB
 CComponent
+CCs
 ccsds
 ccsparc
 cdh
 CDHCORE
 CDHCORESUBTOPOLOGY
 cerrno
-CFDP
+cfdp
+CFDPMANAGER
+CFDPTIMER
 cff
 cflag
 cfsetispeed
@@ -91,7 +95,9 @@ Chieu
 CHIPINFO
 CHK
 CHNG
+chunklist
 CIRCULARSTATE
+clist
 CLOSEFILE
 cloudbees
 CMDDISP
@@ -166,11 +172,13 @@ deployables
 DEPRECATEDLIST
 deser
 Deserial
+destq
 DEVICESM
 DHTML
 diafile
 diles
 dinkel
+diropen
 dnf
 dnp
 docbook
@@ -208,6 +216,7 @@ eay
 ECLIPSEHELP
 EEnum
 EHAs
+eid
 eip
 Elts
 emptydir
@@ -217,6 +226,7 @@ endmacro
 endraw
 enduml
 EPP
+eod
 ERRORCHECK
 errornum
 ert
@@ -231,6 +241,8 @@ evt
 externalproject
 FAKELOGGER
 fbuild
+fdir
+fdirective
 FDISP
 fdp
 featherm
@@ -247,15 +259,21 @@ FILEDISPATCHERCFG
 FILEDOWNLINK
 FILEDOWNLINKCFG
 FILEHANDLING
+FILEHANDLINGCFDP
+FILEHANDLINGCFDPSUBTOPOLOGY
 FILEHANDLINGSUBTOPOLOGY
 FILEID
 FILEMANAGERCONFIG
 FILEOPENERROR
+filestore
 FILEWRITEERROR
+finack
 fio
 fle
+fnames
 FNDELAY
 fne
+foffs
 fontcolor
 FONTPATH
 foodoodie
@@ -279,6 +297,7 @@ freeram
 Fregoso
 frsize
 fsblkcnt
+fsize
 fsw
 FWCASSERT
 gcda
@@ -305,6 +324,7 @@ Graphviz
 grayscales
 GROUNDINTERFACERULES
 GSE
+GSW
 gtags
 gtest
 gtimeout
@@ -412,6 +432,7 @@ lseek
 LTK
 lvar
 LVL
+LVs
 lxml
 MACROFILE
 MACROSTART
@@ -453,6 +474,7 @@ mutexattr
 Mutexed
 muxed
 mycompany
+NAKs
 nasafprime
 nbits
 ncsl
@@ -529,6 +551,7 @@ PKTS
 plainnat
 plantuml
 PNGs
+polldir
 pollfd
 POLLIN
 POLYDB
@@ -560,8 +583,10 @@ projectnumber
 propget
 propput
 protothreading
+psn
 ptbool
 ptf
+PTFO
 pthread
 ptrt
 pvn
@@ -570,6 +595,7 @@ qhelpgenerator
 QHG
 qhp
 qsf
+queueidx
 RAII
 randtbl
 raspberrypi
@@ -602,11 +628,14 @@ Rizvi
 ROOTDIR
 rpi
 rptr
+rsp
+RSubstate
 SAlias
 sanitizers
 sats
 SBF
 SBINDIR
+sbintf
 sbom
 scid
 scm
@@ -659,7 +688,9 @@ sqa
 srandom
 SRCS
 sreddy
+sret
 sss
+SSubstate
 STAMEM
 startuml
 stdbool
@@ -692,6 +723,8 @@ tabdnp
 tabkermit
 tagfile
 tbase
+tbd
+tbl
 tcanham
 tcflush
 tcgetattr
@@ -728,6 +761,7 @@ TLMPACKET
 TLMPACKETIZER
 TLMPACKETIZERCOMPONENTIMPLCFG
 TLMPACKETIZERTYPES
+tlv
 TODOLIST
 TOKENBUCKETTESTER
 topologydefs
@@ -735,9 +769,13 @@ totalram
 tparam
 TPP
 trinomials
+tsn
 tts
 Tumbar
 tumbar
+txa
+txm
+txw
 typedef
 typedef'ed
 uart
@@ -747,6 +785,7 @@ uge
 uitofp
 UML
 umod
+unack
 unconfigured
 UNEXP
 unistd
@@ -777,6 +816,7 @@ WORKDIR
 wrs
 wxgui
 wxy
+XACT
 Xapian
 XBee
 xdf
@@ -786,3 +826,4 @@ xxxx
 XXYY
 ziext
 zimri
+
