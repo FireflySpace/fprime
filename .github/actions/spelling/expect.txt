@@ -45,7 +45,6 @@ Bies
 binaryfile
 BINDIR
 bitfield
-Bitfield
 bitmaps
 bitshifts
 bitwidth
@@ -229,9 +228,8 @@ endfunction
 endmacro
 endraw
 enduml
-EPP
-epp
 eod
+epp
 ERRORCHECK
 errornum
 ert
@@ -272,12 +270,10 @@ FILEHANDLINGSUBTOPOLOGY
 FILEID
 FILEMANAGERCONFIG
 FILEOPENERROR
+filestore
 FILETESTER
 FILEWORKER
 FILEWORKERTYPES
-FILESTORE
-Filestore
-filestore
 FILEWRITEERROR
 finack
 fio
@@ -413,9 +409,9 @@ jobrestrictions
 jpl
 jplffs
 jre
+kermit
 kessler
 kevin
-kermit
 kubiak
 Lammert
 lammertbies
@@ -616,8 +612,8 @@ qhelpgenerator
 QHG
 qhp
 qsf
-racheljt
 queueidx
+racheljt
 RAII
 randtbl
 raspberrypi
@@ -769,11 +765,11 @@ tfvn
 thisdirdoesnotexist
 thisfiledoesnotexist
 Thu
+timcanham
 timebase
 timerfd
 timetag
 timeval
-timcanham
 Tinternal
 tions
 tjh
@@ -797,7 +793,6 @@ TPP
 trinomials
 tsn
 tts
-Tumbar
 tumbar
 txa
 txm
@@ -854,4 +849,3 @@ xxxx
 XXYY
 ziext
 zimri
-
