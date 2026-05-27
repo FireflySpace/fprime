@@ -360,6 +360,7 @@ HPSC
 htags
 HTH
 HTMLHELP
+IAMAI
 ibd
 ieeetr
 ieq

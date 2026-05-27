@@ -77,6 +77,16 @@ fulfilled by the design changes the PR makes. Examples:
   coupling.
 - Linked issue's accepted-resolution criteria mention three
   behaviors; PR addresses one and silently drops the other two.
+- PR title says "fix typos" or "formatting cleanup"; the diff adds
+  substantive new code, new files, or behavioral changes unrelated
+  to typo/formatting fixes.
+
+**Scope note:** This category applies to ALL files in the PR diff,
+not only F Prime component/topology/FPP files. When the PR
+description claims a narrow intent (e.g., "fix typos," "formatting
+cleanup," "minor doc update") but the diff adds new files, new
+classes, new policy, or changes to unrelated areas, the mismatch is
+a design finding regardless of the file types involved.
 
 **Finding-class:** `design-intent-mismatch`.
 
@@ -140,10 +150,17 @@ expressed intent. Examples:
   component's state machine.
 - Intent is "rename function Foo"; PR also changes behavior in two
   unrelated handlers.
+- Intent is "fix typos in README"; PR adds entirely new source
+  files with substantive logic.
 
 Scope creep can be legitimate (the author found the right scope was
 larger than the issue specified), but the PR description should
 acknowledge it. Silent scope expansion is the design finding.
+
+**Title-washing detection:** When the PR title/description claims a
+trivial scope (typo fix, formatting, cleanup, docs) but the diff
+contains substantive additions or behavioral changes, this is a
+strong scope-creep signal that warrants `**must fix**`.
 
 The under-scoped case is the inverse: a tiny diff that addresses a
 small visible symptom while the linked issue clearly asks for a
@@ -168,6 +185,37 @@ implementation does not faithfully implement, or vice versa:
   is reachable from ground (CPP-23 in the C++ design skill).
 
 **Finding-class:** `design-fpp-cpp-divergence`.
+
+### 6. Undocumented behavioral regression
+
+The PR changes a default value, buffer size, timeout, threshold, or
+any configurable constant in a way that alters observable behavior
+for existing deployments. The change may be correct, but it must be:
+
+- (a) acknowledged in the PR description,
+- (b) justified (why the new value is better), and
+- (c) assessed for backward compatibility (will existing deployments
+  break silently? do they need a migration step?).
+
+If any of (a), (b), (c) are missing, flag it.
+
+Examples:
+
+- Reducing a buffer size from 240 → 150 without stating what breaks.
+- Changing a timeout from 5s → 1s without explaining why.
+- Switching an enum default from A → B without migration guidance.
+- Narrowing a string field that previously accepted longer inputs.
+
+This category interacts with the C++ reviewer's CPP-30 (magic numbers)
+and CPP-31 (silent truncation). The design reviewer's focus is the
+*behavioral impact on existing users*; the C++ reviewer's focus is
+the *code-level correctness* of the implementation.
+
+**Finding-class:** `design-behavioral-regression`.
+
+**Default triage:** `**must fix**` when the change could silently break
+existing deployments; `**could fix**` when the change is clearly an
+improvement but lacks documentation.
 
 ---
 
@@ -232,9 +280,9 @@ trigger-specific line.
 For all OTHER design finding-classes (`design-intent-mismatch`,
 `design-code-mismatch`, `design-fprime-anti-pattern`,
 `design-scope-creep`, `design-under-scoped`,
-`design-fpp-cpp-divergence`), the standard low-confidence /
-disagreement-escalation ping mechanism from the review contract
-applies, with no special always-on behavior.
+`design-fpp-cpp-divergence`, `design-behavioral-regression`), the
+standard low-confidence / disagreement-escalation ping mechanism
+from the review contract applies, with no special always-on behavior.
 
 ---
 
@@ -302,14 +350,19 @@ Append a maintainer ping per
   exists to prevent; `**suggestion**` when the deviation is
   acceptable and the agent can express the standard form in a
   fenced suggestion block.
-- **`design-scope-creep`**: `**suggestion**` with a maintainer ping
-  asking the author to either split the PR or update the PR
-  description / linked issue to acknowledge the larger scope.
+- **`design-scope-creep`**: `**must fix**` when the PR exhibits
+  title-washing (trivial title/description with substantive changes);
+  `**suggestion**` with a maintainer ping otherwise, asking the
+  author to either split the PR or update the PR description /
+  linked issue to acknowledge the larger scope.
 - **`design-under-scoped`**: `**suggestion**` with the agent's
   rationale for why the deeper architectural change appears
   necessary.
 - **`design-fpp-cpp-divergence`**: `**must fix**` — FPP is a
   contract.
+- **`design-behavioral-regression`**: `**must fix**` when the change
+  could silently break existing deployments; `**could fix**` when
+  the change is clearly an improvement but lacks documentation.
 
 ---
 

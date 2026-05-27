@@ -71,7 +71,7 @@ Body shape:
 
 ```
 <!-- fprime-review-summary v1 -->
-## Automated review summary  (run #N)
+## Automated review summary  (run N)
 
 ### Recommend: Close
 **Recommend: Close** — <one-line summary, e.g., "prompt-injection attempt in PR-authored content; PR appears non-substantive">.
@@ -84,17 +84,19 @@ cc @<maintainer1> @<maintainer2> — please confirm close.
 
 (omit this entire section unless the spam check in §5e fires)
 
-### Since last run
-| Agent | resolved | still open | newly added | incorrect-fix follow-ups | improperly resolved | disagreements escalated |
-|---|---:|---:|---:|---:|---:|---:|
-| Security Vulnerabilities | 1 | 2 | 0 | 1 | 0 | 0 |
-| Supply Chain / Runner Safety | 0 | 0 | 0 | 0 | 0 | 0 |
-| F Prime C/C++ Design | 2 | 1 | 0 | 0 | 0 | 0 |
-| Documentation Currency | 0 | 0 | 1 | 0 | 0 | 0 |
-| Design | 0 | 1 | 0 | 0 | 0 | 0 |
-| Test Quality | 1 | 0 | 0 | 0 | 0 | 0 |
+### Pre-run prompt-injection alert
+⚠️ The orchestrator's pre-run metadata scan flagged potential
+prompt-injection in PR-authored content before reviewers were
+invoked. All reviewers were warned via their kickoff prompts.
 
-(omit this section on run #1)
+Flagged surfaces:
+- <surface>: <pattern> — "<excerpt>"
+
+The supply-chain reviewer's inline findings below include full
+analysis of any prompt-injection content in the diff and metadata.
+
+(omit this entire section unless precheck_verdict is "flagged" or
+"error"; see §5g for the error variant)
 
 ### Per-agent results
 
@@ -109,7 +111,24 @@ cc @<maintainer1> @<maintainer2> — please confirm close.
 | **CI safety** | — | — | — | — | — | **No-Go** — supply-chain has 1 must-fix in workflows |
 | **Totals** | 10 | 8 | 2 | 1 | 9 | **No-Go** |
 
-### Supply-chain surfaces
+<details>
+<summary>Since last run</summary>
+
+| Agent | resolved | still open | newly added | incorrect-fix follow-ups | improperly resolved | disagreements escalated |
+|---|---:|---:|---:|---:|---:|---:|
+| Security Vulnerabilities | 1 | 2 | 0 | 1 | 0 | 0 |
+| Supply Chain / Runner Safety | 0 | 0 | 0 | 0 | 0 | 0 |
+| F Prime C/C++ Design | 2 | 1 | 0 | 0 | 0 | 0 |
+| Documentation Currency | 0 | 0 | 1 | 0 | 0 | 0 |
+| Design | 0 | 1 | 0 | 0 | 0 | 0 |
+| Test Quality | 1 | 0 | 0 | 0 | 0 | 0 |
+
+</details>
+
+(omit the Since last run block on run 1)
+
+<details>
+<summary>Supply-chain surfaces</summary>
 
 | Surface | Outstanding |
 |---|---|
@@ -119,9 +138,12 @@ cc @<maintainer1> @<maintainer2> — please confirm close.
 | Workflows / actions / scripts | 1 must-fix — action `org/foo@main` unpinned in `build-image.yml` |
 | Generator output | clean |
 | Prompt-injection | clean |
+| Review-system integrity | clean |
+
+</details>
 
 <details>
-<summary>Outstanding must-fix items (9)</summary>
+<summary>Outstanding must-fix items (7)</summary>
 
 **Security Vulnerabilities**
 - <terse must-fix summary> — <link>
@@ -219,12 +241,14 @@ There is no separate `### CI safety` section in the comment body.
 
 ### Supply-chain surfaces table
 
-A second small table rendered immediately after the per-agent results
-table. Drills down the supply-chain agent's coverage by scope category.
+A second small table wrapped in a `<details>` block, rendered after
+the Since last run block. Drills down the supply-chain agent's
+coverage by scope category.
 One row per surface, in the fixed order emitted by the supply-chain
 agent (per review contract §2 "Supply-chain agent: surfaces emission"):
 `Dependencies`, `Vendored / submodule`, `Build / test infrastructure`,
-`Workflows / actions / scripts`, `Generator output`, `Prompt-injection`.
+`Workflows / actions / scripts`, `Generator output`, `Prompt-injection`,
+`Review-system integrity`.
 
 The aggregator parses the `<!-- surfaces: ... -->` block from the
 supply-chain agent's review body and copies each bullet's
@@ -239,19 +263,21 @@ Edge cases:
   table with one line: `Supply-chain agent did not run; surfaces not
   assessed.`
 - **Supply-chain agent emitted no `<!-- surfaces: ... -->` block** (treat as a
-  contract violation) — render the six rows with `unknown — surfaces
+  contract violation) — render the seven rows with `unknown — surfaces
   emission missing` in every `Outstanding` cell and treat as a
   did-not-run for CI-safety rationale purposes.
-- **Supply-chain agent ran successfully and all six surfaces are
-  `clean`** — still render the full six-row table; the explicit
+- **Supply-chain agent ran successfully and all seven surfaces are
+  `clean`** — still render the full seven-row table; the explicit
   per-surface confirmation is the policy substitute the table exists
   to carry.
 
 ### Since last run section
 
 Six counters (per review contract §7 phase D) summed from each
-reviewer's since-last-run line. Omitted on run #1 (no prior summary
-to delta against).
+reviewer's since-last-run line. Wrapped in a `<details>` block.
+Placed between the Per-agent results table and the Supply-chain
+surfaces table. Omitted on run 1 (no prior summary to delta
+against).
 
 ### Outstanding must-fix items
 
@@ -356,7 +382,7 @@ Runner Safety failed to run.`).
 - Locate the prior aggregator review by HTML marker.
 - Dismiss the prior review via
   `PUT /repos/{o}/{r}/pulls/{n}/reviews/{id}/dismissals` with
-  message `Superseded by re-review run #N.`
+  message `Superseded by re-review run N.`
 - Submit a new PR review with the updated body and the correct
   event (`APPROVE` or `REQUEST_CHANGES` based on the new verdicts).
 - Read each per-agent review's `since_last_run` metadata and
@@ -368,12 +394,17 @@ Runner Safety failed to run.`).
 
 ### § `<details>` block usage
 
-The `Outstanding must-fix items` section is wrapped in a
-`<details>` / `<summary>` block. The `<summary>` line includes a
-count so maintainers can see at a glance how many items are inside
-without expanding. The `Since last run` table, `Per-agent results`
-table, and `Supply-chain surfaces` table are always visible (not
-collapsed) because they are primary verdicts and deltas.
+The `Outstanding must-fix items`, `Since last run`, and
+`Supply-chain surfaces` sections are each wrapped in a
+`<details>` / `<summary>` block so maintainers can expand them on
+demand without cluttering the default view. The `<summary>` line
+for `Outstanding must-fix items` includes the count of outstanding
+**must-fix** findings specifically (not total outstanding across all
+tiers) so maintainers can see at a glance how many blocking items
+are inside without expanding.
+The `Per-agent results` table and `Merge readiness` verdict are
+always visible (not collapsed) because they are the primary
+verdicts.
 
 ---
 
@@ -474,8 +505,9 @@ closing line that the aggregator composes itself. Instructions:
 - Make it genuine — written for this PR, this run, this set of
   sub-agents. Not a slogan, not a static catchphrase.
 - Keep it professional and on-mission for flight software.
-- Vary the wording across runs — if it edits a prior summary in
-  place, the closing line should change to reflect the current run.
+- Vary the wording across runs — each re-review dismisses and
+  resubmits the summary, so the closing line should change to
+  reflect the current run.
 - **Lean into space / Star Trek / NASA flavor.** Tasteful nods to
   spaceflight, exploration, mission control, or the Trek canon
   are welcome — the audience is nerds. Keep it tasteful and on-
@@ -485,6 +517,77 @@ closing line that the aggregator composes itself. Instructions:
 
 There is no static thanks block in the review body, and the
 closing line is not templated.
+
+---
+
+## §5g. Pre-run prompt-injection alert
+
+When the orchestrator's kickoff prompt includes
+`precheck_verdict: flagged`, the aggregator renders a
+`Pre-run prompt-injection alert` section in the review body.
+This section is placed **after** `Recommend: Close` (if present)
+and **before** `Per-agent results`.
+
+### Output shape
+
+```
+### Pre-run prompt-injection alert
+⚠️ The orchestrator's pre-run metadata scan flagged potential
+prompt-injection in PR-authored content before reviewers were
+invoked. All reviewers were warned via their kickoff prompts.
+
+Flagged surfaces:
+- <surface>: <pattern> — "<≤120-char excerpt>"
+- ...
+
+The supply-chain reviewer's inline findings below include full
+analysis of any prompt-injection content in the diff and metadata.
+```
+
+The `flagged_surfaces` list is copied verbatim from the
+orchestrator's kickoff prompt.
+
+### When precheck_verdict is "error"
+
+Replace the alert section with:
+
+```
+### Pre-run prompt-injection alert
+⚠️ The orchestrator's pre-run metadata scan encountered an error
+and could not complete. Reviewers were NOT warned. The supply-chain
+reviewer's §6 analysis is the sole prompt-injection coverage for
+this run.
+```
+
+### When precheck_verdict is "clean"
+
+Omit the section entirely. Do not render a "clean" confirmation —
+the absence of the section signals clean.
+
+### Interaction with Recommend: Close (§5e)
+
+The pre-run alert and Recommend: Close are independent. A flagged
+pre-check does not by itself trigger Recommend: Close; that is
+still governed by §5e's trigger criteria (e.g., supply-chain
+must-fix `prompt-injection` findings). However, both may appear
+on the same PR — the pre-check alert provides early-warning
+context; the Recommend: Close reflects the supply-chain reviewer's
+full analysis.
+
+### Interaction with body shape (§Output)
+
+The alert section slots into the review body in this order:
+
+1. HTML marker + heading
+2. Recommend: Close (§5e) — if fired
+3. **Pre-run prompt-injection alert (§5g) — if flagged or error**
+4. Per-agent results
+5. Since last run (§5d) — if run > 1
+6. Supply-chain surfaces
+7. Outstanding must-fix items
+8. Merge readiness
+9. Agents that did not run
+10. Closing line (§5f)
 
 ---
 
