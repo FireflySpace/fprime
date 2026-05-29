@@ -135,11 +135,18 @@ class CfdpManager final : public CfdpManagerComponentBase {
     m_channelTelemetry[chanId].set_recvPdu(m_channelTelemetry[chanId].get_recvPdu() + 1);
   }
 
-  //! Add to sent NAK segment requests
-  void addSentNakSegmentRequests(U8 chanId, U32 count) {
-    FW_ASSERT(chanId < Cfdp::NumChannels);
-    m_channelTelemetry[chanId].set_sentNakSegmentRequests(m_channelTelemetry[chanId].get_sentNakSegmentRequests() + count);
-  }
+    //! Increment receive EOF canceled counter
+    void incrementRecvEofCanceled(U8 chanId) {
+        FW_ASSERT(chanId < Cfdp::NumChannels);
+        m_channelTelemetry[chanId].set_recvEofCanceled(m_channelTelemetry[chanId].get_recvEofCanceled() + 1);
+    }
+
+    //! Add to sent NAK segment requests
+    void addSentNakSegmentRequests(U8 chanId, U32 count) {
+        FW_ASSERT(chanId < Cfdp::NumChannels);
+        m_channelTelemetry[chanId].set_sentNakSegmentRequests(m_channelTelemetry[chanId].get_sentNakSegmentRequests() +
+                                                              count);
+    }
 
   //! Add sent file data bytes
   void addSentFileDataBytes(U8 chanId, U32 bytes) {
@@ -153,11 +160,17 @@ class CfdpManager final : public CfdpManagerComponentBase {
     m_channelTelemetry[chanId].set_sentPdu(m_channelTelemetry[chanId].get_sentPdu() + 1);
   }
 
-  //! Increment fault ACK limit counter
-  void incrementFaultAckLimit(U8 chanId) {
-    FW_ASSERT(chanId < Cfdp::NumChannels);
-    m_channelTelemetry[chanId].set_faultAckLimit(m_channelTelemetry[chanId].get_faultAckLimit() + 1);
-  }
+    //! Increment sent EOF canceled counter
+    void incrementSentEofCanceled(U8 chanId) {
+        FW_ASSERT(chanId < Cfdp::NumChannels);
+        m_channelTelemetry[chanId].set_sentEofCanceled(m_channelTelemetry[chanId].get_sentEofCanceled() + 1);
+    }
+
+    //! Increment fault ACK limit counter
+    void incrementFaultAckLimit(U8 chanId) {
+        FW_ASSERT(chanId < Cfdp::NumChannels);
+        m_channelTelemetry[chanId].set_faultAckLimit(m_channelTelemetry[chanId].get_faultAckLimit() + 1);
+    }
 
   //! Increment fault NAK limit counter
   void incrementFaultNakLimit(U8 chanId) {
@@ -219,11 +232,23 @@ class CfdpManager final : public CfdpManagerComponentBase {
     m_channelTelemetry[chanId].set_faultDirectoryRead(m_channelTelemetry[chanId].get_faultDirectoryRead() + 1);
   }
 
-  //! Get reference to channel telemetry for queue depth updates
-  Cfdp::ChannelTelemetry& getChannelTelemetryRef(U8 chanId) {
-    FW_ASSERT(chanId < Cfdp::NumChannels);
-    return m_channelTelemetry[chanId];
-  }
+    //! Increment receive EOF error counter (any condition code that is not no-error or cancel)
+    void incrementFaultRxEofError(U8 chanId) {
+        FW_ASSERT(chanId < Cfdp::NumChannels);
+        m_channelTelemetry[chanId].set_faultRxEofError(m_channelTelemetry[chanId].get_faultRxEofError() + 1);
+    }
+
+    //! Increment sent EOF error counter (any condition code that is not no-error or cancel)
+    void incrementFaultTxEofError(U8 chanId) {
+        FW_ASSERT(chanId < Cfdp::NumChannels);
+        m_channelTelemetry[chanId].set_faultTxEofError(m_channelTelemetry[chanId].get_faultTxEofError() + 1);
+    }
+
+    //! Get reference to channel telemetry for queue depth updates
+    Cfdp::ChannelTelemetry& getChannelTelemetryRef(U8 chanId) {
+        FW_ASSERT(chanId < Cfdp::NumChannels);
+        return m_channelTelemetry[chanId];
+    }
 
   private:
     // ----------------------------------------------------------------------

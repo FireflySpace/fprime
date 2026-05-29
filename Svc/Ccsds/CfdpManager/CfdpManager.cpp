@@ -159,7 +159,6 @@ Svc::SendFileResponse CfdpManager ::fileIn_handler(
         // Map CFDP status to SendFileStatus
         if (status == Status::SUCCESS) {
             response.set_status(Svc::SendFileStatus::STATUS_OK);
-            this->log_ACTIVITY_LO_SendFileInitiated(sourceFileName);
         } else {
             response.set_status(Svc::SendFileStatus::STATUS_ERROR);
             this->log_WARNING_LO_SendFileInitiateFail(sourceFileName);
@@ -277,10 +276,8 @@ void CfdpManager ::SendFile_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U8 chann
     FW_ASSERT(this->m_engine != nullptr);
 
     if ((rspStatus == Fw::CmdResponse::OK) &&
-        (Status::SUCCESS == this->m_engine->txFile(sourceFileName, destFileName, cfdpClass.e, keep.e,
-                                                        channelId, priority, destId)))
-    {
-        this->log_ACTIVITY_LO_SendFileInitiated(sourceFileName);
+        (Status::SUCCESS ==
+         this->m_engine->txFile(sourceFileName, destFileName, cfdpClass.e, keep.e, channelId, priority, destId))) {
         rspStatus = Fw::CmdResponse::OK;
     }
     else
