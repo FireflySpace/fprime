@@ -570,6 +570,7 @@ plainnat
 plantuml
 PNGs
 polldir
+POLLDIRECTORY
 pollfd
 POLLIN
 POLYDB
@@ -717,6 +718,7 @@ startuml
 stdbool
 stddef
 stdint
+STOPPOLLDIRECTORY
 stest
 Stl
 stmtidx
