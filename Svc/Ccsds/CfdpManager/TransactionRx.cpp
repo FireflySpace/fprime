@@ -106,6 +106,11 @@ void Transaction::reset()
         this->m_fd.close();
     }
 
+    // Disable timers to ensure clean state for next transaction
+    // This prevents stale timers from a previous transaction firing in a new context
+    this->m_inactivity_timer.disableTimer();
+    this->m_ack_timer.disableTimer();
+
     // The following state information is PRESERVED across reset (NOT modified):
     // - this->m_cfdpManager  // Channel binding
     // - this->m_chan         // Channel binding
@@ -113,8 +118,6 @@ void Transaction::reset()
     // - this->m_chan_num     // Channel binding
     // - this->m_history      // Assigned when transaction is activated
     // - this->m_chunks       // Assigned when transaction is activated
-    // - this->m_ack_timer    // Timer state preserved
-    // - this->m_inactivity_timer // Timer state preserved
     // - this->m_cl_node      // Managed by queue operations in freeTransaction()
 }
 
@@ -268,21 +271,23 @@ void Transaction::rTick(int *cont /* unused */) {
         if (this->m_inactivity_timer.getStatus() == Timer::Status::RUNNING)
         {
             this->m_inactivity_timer.run();
-        }
-        else
-        {
-            this->m_flags.com.inactivity_fired = true;
-
-            /* HOLD state is the normal path to recycle transaction objects, not an error */
-            /* inactivity is abnormal in any other state */
-            if (this->m_state != TXN_STATE_HOLD)
+            // Check if timer just expired naturally (after run())
+            if (this->m_inactivity_timer.getStatus() == Timer::Status::EXPIRED)
             {
-                this->rSendInactivityEvent();
+                this->m_flags.com.inactivity_fired = true;
 
-                /* in class 2 this also triggers sending an early FIN response */
-                if (this->m_state == TXN_STATE_R2)
+                /* HOLD state is the normal path to recycle transaction objects, not an error */
+                /* Canceled transactions timing out is also normal */
+                /* inactivity is abnormal in any other state */
+                if (this->m_state != TXN_STATE_HOLD && !this->m_flags.com.canceled)
                 {
-                    this->r2SetFinTxnStatus(TXN_STATUS_INACTIVITY_DETECTED);
+                    this->rSendInactivityEvent();
+
+                    /* in class 2 this also triggers sending an early FIN response */
+                    if (this->m_state == TXN_STATE_R2)
+                    {
+                        this->r2SetFinTxnStatus(TXN_STATUS_INACTIVITY_DETECTED);
+                    }
                 }
             }
         }
