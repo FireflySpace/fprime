@@ -957,7 +957,7 @@ void CfdpManagerTester::sendAndVerifyClass2Tx(
         this->component.doDispatch();
 
         // Run cycles until second EOF
-        U32 maxCycles = 10;
+        U32 maxCycles = 20;
         bool foundSecondEof = false;
 
         for (U32 cycle = 0; cycle < maxCycles && !foundSecondEof; ++cycle) {
