@@ -1,5 +1,6 @@
 Aadil
 AArray
+ABANDONTRANSACTION
 acknak
 AClass
 ACTIVERATEGROUP
@@ -71,6 +72,7 @@ CALCULATECRC
 callergraph
 callgraph
 Campuzano
+CANCELTRANSACTION
 carg
 CBF
 CBLOCK
@@ -568,6 +570,7 @@ pkill
 PKTS
 plainnat
 plantuml
+PLAYBACKDIRECTORY
 PNGs
 polldir
 POLLDIRECTORY
@@ -642,6 +645,7 @@ remediations
 REMOVEDIRECTORY
 REMOVEFILE
 reprioritize
+RESETCOUNTERS
 RGD
 rhel
 RHH
@@ -665,10 +669,12 @@ sdd
 sdiv
 sdls
 searchdata
+segmeta
 SENDPARTIAL
 seqgen
 serializables
 setaffinity
+SETCHANNELFLOW
 setinheritsched
 SETLOGGING
 setname
@@ -734,6 +740,7 @@ subsecond
 subtopology
 suppr
 suseconds
+SUSPENDRESUMETRANSACTION
 SVCLOGFILE
 SVCLOGFILEL
 swcaegitadmin
