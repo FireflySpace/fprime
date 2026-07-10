@@ -28,24 +28,11 @@ event SendFileInitiateFail(
     severity warning low \
     format "Failed to initiate file send transfer for {}"
 
-event PlaybackInvalidChannel(
-    channelId: U8 @< Requested channel index
-    maxChannelId: U8 @< Maximum channel index
-) \
-    severity warning low \
-    format "Invalid channel ID {}, maximum channel ID is {}" 
-
 event PlaybackInitiated(
     sourceDirectory: string size MaxFilePathSize @< Source directory being sent
 ) \
     severity activity low \
-    format "Successfully initiated directory playback for {}" 
-
-event PlaybackInitiateFail(
-    sourceDirectory: string size MaxFilePathSize @< Source directory being sent
-) \
-    severity warning low \
-    format "Failed to initiate file send transfer for {}"
+    format "Successfully initiated directory playback for {}"
 
 event PollDirInitiated(
     sourceDirectory: string size MaxFilePathSize @< Source directory being sent
@@ -222,14 +209,6 @@ event RxFileSizeMismatch(
     severity warning high \
     format "RX class {} transaction {}:{} EOF file size mismatch: expected {} got {}"
 
-event RxInvalidEofPdu(
-    cfdpClass: Cfdp.Class @< CFDP class
-    srcEid: U32 @< Source entity ID
-    seqNum: U32 @< Transaction sequence number
-) \
-    severity warning low \
-    format "RX class {} transaction {}:{} received invalid EOF PDU"
-
 event RxEofCancelReceived(
     cfdpClass: Cfdp.Class @< CFDP class
     srcEid: U32 @< Source entity ID
@@ -356,7 +335,7 @@ event TxSendMetadataFailed(
     srcEid: U32 @< Source entity ID
     seqNum: U32 @< Transaction sequence number
 ) \
-    severity warning high \
+    severity warning low \
     format "TX class {} transaction {}:{} failed to send metadata PDU"
 
 event TxEarlyFinReceived(

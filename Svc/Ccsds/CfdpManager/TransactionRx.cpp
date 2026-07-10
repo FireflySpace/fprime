@@ -302,9 +302,10 @@ void Transaction::rTick(int *cont /* unused */) {
                                static_cast<ConditionCode>(this->m_state_data.receive.r2.eof_cc),
                                this->m_history->peer_eid, this->m_history->seq_num);
         FW_ASSERT(sret != Cfdp::Status::SEND_PDU_ERROR);
+        // FW_ASSERT(sret != Cfdp::Status::SEND_PDU_ERROR);
 
-        /* if Cfdp::Status::SUCCESS, then move on in the state machine. CFDP_SendAck does not return
-         * SEND_PDU_ERROR */
+        /* if Cfdp::Status::SUCCESS, then move on in the state machine. A serialization error is
+         * already logged by serializeAndSendPdu(), so treat anything other than NO_BUF_AVAIL as done. */
         if (sret != Cfdp::Status::SEND_PDU_NO_BUF_AVAIL_ERROR)
         {
             this->m_flags.rx.send_eof_ack = false;
@@ -631,6 +632,11 @@ Status::T Transaction::rSubstateRecvEof(const Fw::Buffer& buffer) {
 
     if (ret == Cfdp::Status::SUCCESS)
     {
+        // NOTE: Engine::recvEof() currently always returns SUCCESS, so the failure branch is
+        // omitted here. Once recvEof() performs real EOF-level validation (see the TLV
+        // "Future enhancement" TODO in Engine::recvEof) and can return an error status, add an
+        // else branch that emits log_WARNING_LO_RxInvalidEofPdu, increments recvErrors, and sets
+        // Cfdp::Status::REC_PDU_BAD_EOF_ERROR for the failure case.
         if (!this->m_engine->recvEof(this, eof))
         {
             /* this function is only entered for PDUs identified as EOF type */
@@ -665,11 +671,6 @@ Status::T Transaction::rSubstateRecvEof(const Fw::Buffer& buffer) {
                                                                        this->m_history->seq_num, cc);
                 }
             }
-        } else {
-            this->m_cfdpManager->log_WARNING_LO_RxInvalidEofPdu(this->getClass(), this->m_history->src_eid,
-                                                                this->m_history->seq_num);
-            this->m_cfdpManager->incrementRecvErrors(this->m_chan_num);
-            ret = Cfdp::Status::REC_PDU_BAD_EOF_ERROR;
         }
     }
 
@@ -1256,9 +1257,9 @@ void Transaction::rDispatchRecv(const Fw::Buffer& buffer,
             selected_handler = fd_fn;
         }
     }
-    else if (pduType != Cfdp::PduTypeEnum::NONE)
+    else
     {
-        // It's a directive PDU - parse header to get directive code
+        // Not a file-data PDU - parse as a directive PDU to get the directive code.
         Fw::SerialBuffer sb(const_cast<U8*>(buffer.getData()), buffer.getSize());
         sb.setBuffLen(buffer.getSize());
 
