@@ -382,6 +382,253 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! Test StopPollDirectory command on active directory (fix verification)
     void testStopPollDirActive();
 
+    //! Test SendFile command with invalid channel ID
+    void testSendFileInvalidChannel();
+
+    //! Test PlaybackDirectory command with valid directory
+    void testPlaybackDirectoryNominal();
+
+    //! Test PlaybackDirectory command with invalid channel
+    void testPlaybackDirectoryInvalidChannel();
+
+    //! Test PlaybackDirectory command with nonexistent directory
+    void testPlaybackDirectoryOpenFailed();
+
+    //! Test PollDirectory command with valid directory
+    void testPollDirectoryNominal();
+
+    //! Test PollDirectory command with invalid channel
+    void testPollDirectoryInvalidChannel();
+
+    //! Test PollDirectory command when poll slot is busy
+    void testPollDirectoryBusy();
+
+    //! Test SetChannelFlow command with valid channel
+    void testSetChannelFlowNominal();
+
+    //! Test SetChannelFlow command with invalid channel
+    void testSetChannelFlowInvalidChannel();
+
+    //! Test SuspendResumeTransaction command - suspend and resume
+    void testSuspendResumeTransactionNominal();
+
+    //! Test SuspendResumeTransaction command with invalid channel
+    void testSuspendResumeTransactionInvalidChannel();
+
+    //! Test SuspendResumeTransaction command with nonexistent transaction
+    void testSuspendResumeTransactionNotFound();
+
+    //! Test CancelTransaction command
+    void testCancelTransactionNominal();
+
+    //! Test CancelTransaction command with invalid channel
+    void testCancelTransactionInvalidChannel();
+
+    //! Test AbandonTransaction command
+    void testAbandonTransactionNominal();
+
+    //! Test AbandonTransaction command with invalid channel
+    void testAbandonTransactionInvalidChannel();
+
+    //! Test ResetCounters command for single channel
+    void testResetCountersSingleChannel();
+
+    //! Test ResetCounters command for all channels
+    void testResetCountersAllChannels();
+
+  public:
+    // ----------------------------------------------------------------------
+    // Parameter Tests
+    // ----------------------------------------------------------------------
+
+    //! Test LocalEid parameter set/get
+    void testParamLocalEidSetGet();
+
+    //! Test LocalEid parameter default value
+    void testParamLocalEidDefault();
+
+    //! Test OutgoingFileChunkSize parameter set/get
+    void testParamOutgoingFileChunkSizeSetGet();
+
+    //! Test OutgoingFileChunkSize parameter default value
+    void testParamOutgoingFileChunkSizeDefault();
+
+    //! Test RxCrcCalcBytesPerCycle parameter set/get
+    void testParamRxCrcCalcBytesPerCycleSetGet();
+
+    //! Test RxCrcCalcBytesPerCycle parameter default value
+    void testParamRxCrcCalcBytesPerCycleDefault();
+
+    //! Test FileInDefaultChannel parameter set/get
+    void testParamFileInDefaultChannelSetGet();
+
+    //! Test FileInDefaultChannel parameter default value
+    void testParamFileInDefaultChannelDefault();
+
+    //! Test FileInDefaultDestEntityId parameter set/get
+    void testParamFileInDefaultDestEntityIdSetGet();
+
+    //! Test FileInDefaultDestEntityId parameter default value
+    void testParamFileInDefaultDestEntityIdDefault();
+
+    //! Test FileInDefaultClass parameter set/get
+    void testParamFileInDefaultClassSetGet();
+
+    //! Test FileInDefaultClass parameter default value
+    void testParamFileInDefaultClassDefault();
+
+    //! Test FileInDefaultKeep parameter set/get
+    void testParamFileInDefaultKeepSetGet();
+
+    //! Test FileInDefaultKeep parameter default value
+    void testParamFileInDefaultKeepDefault();
+
+    //! Test FileInDefaultPriority parameter set/get
+    void testParamFileInDefaultPrioritySetGet();
+
+    //! Test FileInDefaultPriority parameter default value
+    void testParamFileInDefaultPriorityDefault();
+
+  public:
+    // ----------------------------------------------------------------------
+    // Port Tests
+    // ----------------------------------------------------------------------
+
+    //! Test dataReturnIn port on channel 0
+    void testDataReturnInChannel0();
+
+    //! Test dataReturnIn port on channel 1
+    void testDataReturnInChannel1();
+
+    //! Test Class 1 RX transaction on channel 1
+    void testClass1RxNominalChannel1();
+
+    //! Test Class 2 RX transaction on channel 1
+    void testClass2RxNominalChannel1();
+
+  public:
+    // ----------------------------------------------------------------------
+    // Event Coverage Tests
+    // ----------------------------------------------------------------------
+
+    // Transaction Activity Events
+    void testTxFileQueuedEvent();
+    void testTxFileTransferStartedEvent();
+    void testMetadataReceivedEvent();
+
+    // Buffer Management Events
+    void testBuffersExhaustedEvent();
+    void testChunklistUnavailableEvent();
+
+    // PDU Deserialization Failure Events
+    void testFailPduHeaderDeserializationEvent();
+    void testFailMetadataPduDeserializationEvent();
+    void testFailFileDataPduDeserializationEvent();
+    void testFailEofPduDeserializationEvent();
+    void testFailAckPduDeserializationEvent();
+    void testFailFinPduDeserializationEvent();
+    void testFailNakPduDeserializationEvent();
+
+    // PDU Processing and Serialization Failure Events
+    void testFailKeepFileMoveEvent();
+    void testFailPduSerializationEvent();
+    void testFailPollFileMoveEvent();
+    void testFileDataSegmentMetadataEvent();
+
+    // RX Error Events
+    void testRxFileCreateFailedEvent();
+    void testRxCrcMismatchEvent();
+    void testRxFileSizeMismatchEvent();
+    void testRxEofCancelReceivedEvent();
+    void testRxEofWithErrorEvent();
+    void testRxEofMdSizeMismatchEvent();
+    void testRxTransactionLimitReachedEvent();
+    void testRxInvalidDirectiveCodeEvent();
+    void testRxInactivityTimeoutEvent();
+    void testRxAckLimitReachedEvent();
+    void testRxNakLimitReachedEvent();
+    void testInvalidDestinationEidEvent();
+    void testUnhandledPduInIdleStateEvent();
+
+    // TX Error Events
+    void testTxInvalidDirectiveCodeEvent();
+    void testTxEarlyFinReceivedEvent();
+    void testTxNonFileDirectivePduReceivedEvent();
+    void testTxInvalidNakPduEvent();
+    void testTxInvalidSegmentRequestsEvent();
+    void testTxInactivityTimeoutEvent();
+    void testTxAckLimitReachedEvent();
+    void testMaxTxTransactionsReachedEvent();
+
+    // File Management Events
+    void testFileRemoveFailedEvent();
+    void testPlaybackDirOpenFailedEvent();
+    void testPlaybackDirReadFailedEvent();
+    void testPlaybackDirSlotUnavailableEvent();
+
+    // Critical Error Path Events
+    void testRxWriteFailedEvent();
+    void testRxSeekFailedEvent();
+    void testRxFileRenameFailedEvent();
+    void testRxFileReopenFailedEvent();
+    void testTxFileSeekFailedEvent();
+    void testTxSendMetadataFailedEvent();
+
+    // Informational/Diagnostic Events
+    void testRxTempFileCreatedEvent();
+    void testDanglingFileHandleClosedEvent();
+    void testResetFreedTransactionEvent();
+
+    // RX CRC and Validation Events
+    void testRxSeekCrcFailedEvent();
+    void testRxReadCrcFailedEvent();
+
+    // Port and Command Input Validation
+    void testUnsupportedSendFileArgumentsEvent();
+    void testSendFileInitiateFailEvent();
+    void testInvalidChannelPollEvent();
+
+  public:
+    // ----------------------------------------------------------------------
+    // Coverage Tests
+    //
+    // Target trivial paths in CfdpManager.cpp/.hpp and transaction-dependent
+    // Utils.cpp helpers that are not otherwise exercised.
+    // ----------------------------------------------------------------------
+
+    //! dataIn_handler: buffer smaller than the 2-byte packet descriptor
+    void testDataInBufferTooSmall();
+
+    //! dataIn_handler: packet descriptor is not FW_PACKET_FILE
+    void testDataInWrongDescriptor();
+
+    //! getPduBuffer: max outgoing PDUs per cycle reached
+    void testGetPduBufferMaxOutgoing();
+
+    //! CancelTransaction command on a nonexistent transaction
+    void testCancelTransactionNotFound();
+
+    //! AbandonTransaction command on a nonexistent transaction
+    void testAbandonTransactionNotFound();
+
+    //! ResetCounters command with an invalid (non-0xFF, out-of-range) channel
+    void testResetCountersInvalidChannel();
+
+    //! Telemetry helper: incrementRecvDropped
+    void testIncrementRecvDropped();
+
+    //! Telemetry helper: incrementSentEofCanceled
+    void testIncrementSentEofCanceled();
+
+    //! GetTxnStatus over the transaction-state branches
+    void testGetTxnStatusStates();
+
+    //! Transaction::findBySequenceNumberCallback match and non-match
+    void testFindBySequenceNumberCallback();
+
+    //! Transaction::prioritySearchCallback match and non-match
+    void testPrioritySearchCallback();
+
   public:
     // ----------------------------------------------------------------------
     // Miscellaneous Tests
@@ -488,10 +735,12 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param dstFile Destination file path where received file will be written
     //! @param groundSrcFile Source filename from ground perspective
     //! @param expectedFileSize Expected size of file to receive
+    //! @param channelId CFDP channel to run the transfer on (default channel 0)
     void sendAndVerifyClass1Rx(const char* srcFile,
                                const char* dstFile,
                                const char* groundSrcFile,
-                               FwSizeType expectedFileSize);
+                               FwSizeType expectedFileSize,
+                               U8 channelId = TEST_CHANNEL_ID_0);
 
     //! Receive and verify a Class 2 RX transaction
     //! @param srcFile Local file to read test data from
@@ -499,11 +748,15 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param groundSrcFile Source filename from ground perspective
     //! @param expectedFileSize Expected size of file to receive
     //! @param simulateNak If true, simulate missing FileData to trigger NAK (optional, default false)
+    //! @param expectExactCounts If true, assert exact counter values (single-transaction no-NAK only)
+    //! @param channelId CFDP channel to run the transfer on (default channel 0)
     void sendAndVerifyClass2Rx(const char* srcFile,
                                const char* dstFile,
                                const char* groundSrcFile,
                                FwSizeType expectedFileSize,
-                               bool simulateNak = false);
+                               bool simulateNak = false,
+                               bool expectExactCounts = false,
+                               U8 channelId = TEST_CHANNEL_ID_0);
 
     //! Verify FIN-ACK PDU at given index
     void verifyFinAckPdu(FwIndexType pduIndex, EntityId sourceEid, EntityId destEid, U32 expectedSeqNum);
@@ -530,6 +783,9 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! Verify received file matches expected data
     void verifyReceivedFile(const char* filePath, const U8* expectedData, FwSizeType expectedSize);
 
+    //! Set buffer allocation failure flag for testing
+    void setFailBufferAllocation(bool fail);
+
   private:
     // ----------------------------------------------------------------------
     // Member variables
@@ -548,6 +804,9 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     static constexpr FwSizeType MAX_PDU_COPIES = 100;
     U8 m_pduCopyStorage[MAX_PDU_COPIES][MaxPduSize];
     FwSizeType m_pduCopyCount;
+
+    //! Flag to simulate buffer allocation failure for testing
+    bool m_failBufferAllocation;
 };
 
 }  // namespace Cfdp

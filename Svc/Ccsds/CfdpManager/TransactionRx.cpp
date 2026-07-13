@@ -545,6 +545,11 @@ Status::T Transaction::rSubstateRecvEof(const Fw::Buffer& buffer) {
     }
 
     if (ret == Cfdp::Status::SUCCESS) {
+        // NOTE: Engine::recvEof() currently always returns SUCCESS, so the failure branch is
+        // omitted here. Once recvEof() performs real EOF-level validation (see the TLV
+        // "Future enhancement" TODO in Engine::recvEof) and can return an error status, add an
+        // else branch that emits log_WARNING_LO_RxInvalidEofPdu, increments recvErrors, and sets
+        // Cfdp::Status::REC_PDU_BAD_EOF_ERROR for the failure case.
         if (!this->m_engine->recvEof(this, eof)) {
             /* this function is only entered for PDUs identified as EOF type */
             ConditionCode cc = eof.getConditionCode();
@@ -579,11 +584,6 @@ Status::T Transaction::rSubstateRecvEof(const Fw::Buffer& buffer) {
                                                                        this->m_history->seq_num, static_cast<U8>(cc));
                 }
             }
-        } else {
-            this->m_cfdpManager->log_WARNING_LO_RxInvalidEofPdu(this->getClass(), this->m_history->src_eid,
-                                                                this->m_history->seq_num);
-            this->m_cfdpManager->incrementRecvErrors(this->m_chan_num);
-            ret = Cfdp::Status::REC_PDU_BAD_EOF_ERROR;
         }
     }
 
@@ -1117,8 +1117,8 @@ void Transaction::rDispatchRecv(const Fw::Buffer& buffer, const RSubstateDispatc
         if (!TxnStatusIsError(this->m_history->txn_stat)) {
             selected_handler = fd_fn;
         }
-    } else if (pduType != Cfdp::PduTypeEnum::NONE) {
-        // It's a directive PDU - parse header to get directive code
+    } else {
+        // Not a file-data PDU - parse as a directive PDU to get the directive code.
         // const_cast: Fw::SerialBuffer requires non-const U8* even for deserialization (read-only)
         Fw::SerialBuffer sb(const_cast<U8*>(buffer.getData()), buffer.getSize());
         sb.setBuffLen(buffer.getSize());
