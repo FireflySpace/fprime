@@ -12,9 +12,7 @@
 #include <Fw/Types/SerialBuffer.hpp>
 #include <Fw/Types/Serializable.hpp>
 #include <Svc/CmdSequencer/CmdSequencerImpl.hpp>
-extern "C" {
-#include <Utils/Hash/libcrc/lib_crc.h>
-}
+#include <Utils/Hash/Hash.hpp>
 
 namespace Svc {
 
@@ -74,7 +72,7 @@ CmdSequencerComponentImpl::~CmdSequencerComponentImpl() {}
 void CmdSequencerComponentImpl::CS_RUN_cmdHandler(FwOpcodeType opCode,
                                                   U32 cmdSeq,
                                                   const Fw::CmdStringArg& fileName,
-                                                  Svc::BlockState block) {
+                                                  const Svc::BlockState& block) {
     if (not this->requireRunMode(STOPPED)) {
         if (m_join_waiting) {
             // Inform user previous seq file is not complete

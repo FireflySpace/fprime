@@ -1559,6 +1559,34 @@ TEST(TypesTest, FormatSpecifierTest) {
     ASSERT_STREQ(str.toChar(), "CHAR: A");
 }
 
+namespace {
+struct ArrayElementsHolder {
+    U32 m_items[4];
+    FwSizeType count() const {
+        // Member array (this->member) in a constant expression. This is the case
+        // a by-reference helper could not handle ("use of 'this' pointer ...
+        // constexpr"); the sizeof form does not evaluate the argument.
+        static_assert(FW_NUM_ARRAY_ELEMENTS(this->m_items) == 4, "member array count");
+        return static_cast<FwSizeType>(FW_NUM_ARRAY_ELEMENTS(this->m_items));
+    }
+};
+}  // namespace
+
+TEST(TypesTest, NumArrayElements) {
+    // FW_NUM_ARRAY_ELEMENTS reports the element count of a C-style array.
+    U32 ids[7] = {0};
+    ASSERT_EQ(FW_NUM_ARRAY_ELEMENTS(ids), static_cast<std::size_t>(7));
+
+    // For a multi-dimensional array it returns the outer extent, matching the
+    // old sizeof-based behavior.
+    U8 grid[3][5] = {{0}};
+    ASSERT_EQ(FW_NUM_ARRAY_ELEMENTS(grid), static_cast<std::size_t>(3));
+
+    // Member array used through this-> in a constant expression.
+    ArrayElementsHolder holder{};
+    ASSERT_EQ(holder.count(), static_cast<FwSizeType>(4));
+}
+
 TEST(PerformanceTest, F64SerPerfTest) {
     SerializeTestBuffer buff;
 
@@ -1717,6 +1745,49 @@ TEST(Nominal, string_len) {
 TEST(OffNominal, string_len_zero) {
     const char* test_string = "abc123";
     ASSERT_EQ(Fw::StringUtils::string_length(test_string, static_cast<FwSizeType>(0)), 0);
+}
+
+TEST(Nominal, string_last_n) {
+    char test_string[] = "abc123";
+    const char* tail = Fw::StringUtils::string_last_n(test_string, 3, static_cast<FwSizeType>(sizeof(test_string)));
+    ASSERT_EQ(tail, test_string + 3);
+    ASSERT_STREQ(tail, "123");
+}
+
+TEST(OffNominal, string_last_n_n_equals_length) {
+    char test_string[] = "abc123";
+    const char* tail = Fw::StringUtils::string_last_n(test_string, 6, static_cast<FwSizeType>(sizeof(test_string)));
+    ASSERT_EQ(tail, test_string);
+    ASSERT_STREQ(tail, "abc123");
+}
+
+TEST(OffNominal, string_last_n_n_greater_than_length) {
+    char test_string[] = "abc123";
+    const char* tail = Fw::StringUtils::string_last_n(test_string, 50, static_cast<FwSizeType>(sizeof(test_string)));
+    ASSERT_EQ(tail, test_string);
+    ASSERT_STREQ(tail, "abc123");
+}
+
+TEST(OffNominal, string_last_n_zero_n) {
+    char test_string[] = "abc123";
+    const char* tail = Fw::StringUtils::string_last_n(test_string, 0, static_cast<FwSizeType>(sizeof(test_string)));
+    ASSERT_EQ(tail, test_string + 6);
+    ASSERT_STREQ(tail, "");
+}
+
+TEST(OffNominal, string_last_n_zero_buffer) {
+    char test_string[] = "abc123";
+    const char* tail = Fw::StringUtils::string_last_n(test_string, 3, static_cast<FwSizeType>(0));
+    ASSERT_EQ(tail, test_string);
+    ASSERT_STREQ(tail, "abc123");
+}
+
+TEST(OffNominal, string_last_n_bounded_non_null_terminated) {
+    char test_string[] = {'a', 'b', 'c', 'd'};
+    const char* tail = Fw::StringUtils::string_last_n(test_string, 2, static_cast<FwSizeType>(sizeof(test_string)));
+    ASSERT_EQ(tail, test_string + 2);
+    ASSERT_EQ(tail[0], 'c');
+    ASSERT_EQ(tail[1], 'd');
 }
 
 TEST(OffNominal, sub_string_no_match) {

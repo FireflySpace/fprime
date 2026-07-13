@@ -88,9 +88,6 @@ class PrmDbImpl final : public PrmDbComponentBase {
 
     PrmDbFileLoadState m_state;  // Current file load state of the parameter database
 
-    // helper to compute CRC over a buffer
-    U32 computeCrc(U32 crc, const BYTE* buff, FwSizeType size);
-
     // Pointers to the active and staging databases
     // These point to the actual storage arrays below
     // The active database is the ONLY one used for getting parameters
@@ -182,7 +179,10 @@ class PrmDbImpl final : public PrmDbComponentBase {
     //!  \param cmdSeq The sequence number of the command
     //!  \param fileName The name of the parameter load file
     //!  \param merge Whether to merge (true) or fully reset (false) the parameter database from the file contents
-    void PRM_LOAD_FILE_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, const Fw::CmdStringArg& fileName, PrmDb_Merge merge);
+    void PRM_LOAD_FILE_cmdHandler(FwOpcodeType opCode,
+                                  U32 cmdSeq,
+                                  const Fw::CmdStringArg& fileName,
+                                  const PrmDb_Merge& merge);
 
     //!  \brief PrmDb PRM_COMMIT_STAGED command handler
     //!

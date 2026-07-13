@@ -19,7 +19,7 @@ FpySequencer ::FpySequencer(const char* const compName)
       m_allocatorId(0),
       m_sequenceFilePath("<invalid_seq>"),
       m_sequenceObj(),
-      m_computedCRC(0),
+      m_computedCRC(),
       m_totalExpectedArgSize(0),
       m_sequenceBlockState(),
       m_savedOpCode(0),
@@ -41,7 +41,7 @@ FpySequencer ::~FpySequencer() {}
 void FpySequencer::RUN_cmdHandler(FwOpcodeType opCode,               //!< The opcode
                                   U32 cmdSeq,                        //!< The command sequence number
                                   const Fw::CmdStringArg& fileName,  //!< The name of the sequence file
-                                  BlockState block                   //!< Return command status when complete or not
+                                  const BlockState& block            //!< Return command status when complete or not
 ) {
     // Empty args and delegate to RUN_ARGS handler
     this->RUN_ARGS_cmdHandler(opCode, cmdSeq, fileName, block, Svc::SeqArgs{0, 0});
@@ -50,8 +50,8 @@ void FpySequencer::RUN_cmdHandler(FwOpcodeType opCode,               //!< The op
 void FpySequencer ::RUN_ARGS_cmdHandler(FwOpcodeType opCode,               //!< The opcode
                                         U32 cmdSeq,                        //!< The command sequence number
                                         const Fw::CmdStringArg& fileName,  //!< The name of the sequence file
-                                        Svc::BlockState block,  //!< Return command status when complete or not
-                                        Svc::SeqArgs args       //!< Arguments to pass to the sequencer
+                                        const Svc::BlockState& block,  //!< Return command status when complete or not
+                                        const Svc::SeqArgs& args       //!< Arguments to pass to the sequencer
 ) {
     // can only run a seq while in idle
     if (sequencer_getState() != State::IDLE) {
@@ -91,7 +91,7 @@ void FpySequencer::VALIDATE_cmdHandler(FwOpcodeType opCode,              //!< Th
 void FpySequencer ::VALIDATE_ARGS_cmdHandler(FwOpcodeType opCode,
                                              U32 cmdSeq,
                                              const Fw::CmdStringArg& fileName,
-                                             Svc::SeqArgs buffer) {
+                                             const Svc::SeqArgs& buffer) {
     // can only validate a seq while in idle
     if (sequencer_getState() != State::IDLE) {
         this->log_WARNING_HI_InvalidCommand(static_cast<I32>(sequencer_getState()));
@@ -109,9 +109,9 @@ void FpySequencer ::VALIDATE_ARGS_cmdHandler(FwOpcodeType opCode,
     this->sequencer_sendSignal_cmd_VALIDATE(FpySequencer_SequenceExecutionArgs(fileName, BlockState::BLOCK, buffer));
 }
 
-void FpySequencer::RUN_VALIDATED_cmdHandler(FwOpcodeType opCode,  //!< The opcode
-                                            U32 cmdSeq,           //!< The command sequence number
-                                            BlockState block      //!< Return command status when complete or not
+void FpySequencer::RUN_VALIDATED_cmdHandler(FwOpcodeType opCode,     //!< The opcode
+                                            U32 cmdSeq,              //!< The command sequence number
+                                            const BlockState& block  //!< Return command status when complete or not
 ) {
     // can only RUN_VALIDATED if we have validated and are awaiting this exact cmd
     if (sequencer_getState() != State::AWAITING_CMD_RUN_VALIDATED) {
@@ -254,7 +254,7 @@ void FpySequencer::DUMP_STACK_TO_FILE_cmdHandler(FwOpcodeType opCode,           
     Os::File::Status status = sequenceFile.open(fileName.toChar(), Os::File::OPEN_WRITE);
 
     if (status != Os::File::Status::OP_OK) {
-        this->log_WARNING_HI_FileOpenError(this->m_sequenceFilePath, static_cast<I32>(status));
+        this->log_WARNING_HI_FileOpenError(fileName, static_cast<I32>(status));
         this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::EXECUTION_ERROR);
         return;
     }
@@ -488,6 +488,7 @@ void FpySequencer::updateDebugTelemetryStruct() {
 
 void FpySequencer::parametersLoaded() {
     parameterUpdated(PARAMID_STATEMENT_TIMEOUT_SECS);
+    parameterUpdated(PARAMID_SEQ_BASE_DIR);
 }
 
 void FpySequencer::parameterUpdated(FwPrmIdType id) {
@@ -495,6 +496,10 @@ void FpySequencer::parameterUpdated(FwPrmIdType id) {
     switch (id) {
         case PARAMID_STATEMENT_TIMEOUT_SECS: {
             this->tlmWrite_PRM_STATEMENT_TIMEOUT_SECS(this->paramGet_STATEMENT_TIMEOUT_SECS(valid));
+            break;
+        }
+        case PARAMID_SEQ_BASE_DIR: {
+            this->tlmWrite_PRM_SEQ_BASE_DIR(this->paramGet_SEQ_BASE_DIR(valid));
             break;
         }
         default: {

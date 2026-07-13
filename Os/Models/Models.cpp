@@ -2,9 +2,11 @@
 // \title Os/Models/Models.cpp
 // \brief test used to validate Os/Models before use
 // ======================================================================
+#include "Os/CountingSemaphore.hpp"
 #include "Os/Directory.hpp"
 #include "Os/File.hpp"
 #include "Os/FileSystem.hpp"
+#include "Os/Models/CountingSemaphoreStatusEnumAc.hpp"
 #include "Os/Models/DirectoryOpenModeEnumAc.hpp"
 #include "Os/Models/DirectoryStatusEnumAc.hpp"
 #include "Os/Models/FileModeEnumAc.hpp"
@@ -50,6 +52,8 @@ static_assert(static_cast<Os::FileStatus::T>(Os::File::Status::NO_MORE_RESOURCES
                   Os::FileStatus::T::NO_MORE_RESOURCES,
               "File status and FPP shadow enum do not match");
 static_assert(static_cast<Os::FileStatus::T>(Os::File::Status::OTHER_ERROR) == Os::FileStatus::T::OTHER_ERROR,
+              "File status and FPP shadow enum do not match");
+static_assert(static_cast<Os::FileStatus::T>(Os::File::Status::OUTSIDE_SANDBOX) == Os::FileStatus::T::OUTSIDE_SANDBOX,
               "File status and FPP shadow enum do not match");
 
 // Check consistency of every constant in the Os::File::Mode enum
@@ -249,3 +253,23 @@ static_assert(static_cast<Os::GenericStatus::T>(Os::Generic::Status::OP_OK) == O
               "Generic status enums do not match");
 static_assert(static_cast<Os::GenericStatus::T>(Os::Generic::Status::ERROR) == Os::GenericStatus::T::ERROR,
               "Generic status enums do not match");
+
+// Check consistency of every constant in the Os::CountingSemaphore::Status enum
+static_assert(static_cast<Os::CountingSemaphoreStatus::T>(Os::CountingSemaphore::Status::OP_OK) ==
+                  Os::CountingSemaphoreStatus::T::OP_OK,
+              "CountingSemaphore status enums do not match");
+static_assert(static_cast<Os::CountingSemaphoreStatus::T>(Os::CountingSemaphore::Status::ERROR_TIMEOUT) ==
+                  Os::CountingSemaphoreStatus::T::ERROR_TIMEOUT,
+              "CountingSemaphore status enums do not match");
+static_assert(static_cast<Os::CountingSemaphoreStatus::T>(Os::CountingSemaphore::Status::ERROR_INVALID) ==
+                  Os::CountingSemaphoreStatus::T::ERROR_INVALID,
+              "CountingSemaphore status enums do not match");
+static_assert(static_cast<Os::CountingSemaphoreStatus::T>(Os::CountingSemaphore::Status::ERROR_NOT_IMPLEMENTED) ==
+                  Os::CountingSemaphoreStatus::T::ERROR_NOT_IMPLEMENTED,
+              "CountingSemaphore status enums do not match");
+static_assert(static_cast<Os::CountingSemaphoreStatus::T>(Os::CountingSemaphore::Status::NOT_SUPPORTED) ==
+                  Os::CountingSemaphoreStatus::T::NOT_SUPPORTED,
+              "CountingSemaphore status enums do not match");
+static_assert(static_cast<Os::CountingSemaphoreStatus::T>(Os::CountingSemaphore::Status::ERROR_OTHER) ==
+                  Os::CountingSemaphoreStatus::T::ERROR_OTHER,
+              "CountingSemaphore status enums do not match");

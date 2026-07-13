@@ -123,9 +123,13 @@ register_fprime_module(
       "${CMAKE_CURRENT_LIST_DIR}/ValidatedFile.cpp"
       "${CMAKE_CURRENT_LIST_DIR}/IntervalTimer.cpp"
       "${CMAKE_CURRENT_LIST_DIR}/Os.cpp"
+      "${CMAKE_CURRENT_LIST_DIR}/FilePathUtils.cpp"
+      "${CMAKE_CURRENT_LIST_DIR}/SandboxedFile.cpp"
     HEADERS
       "${CMAKE_CURRENT_LIST_DIR}/ValidatedFile.hpp"
       "${CMAKE_CURRENT_LIST_DIR}/Os.hpp"
+      "${CMAKE_CURRENT_LIST_DIR}/FilePathUtils.hpp"
+      "${CMAKE_CURRENT_LIST_DIR}/SandboxedFile.hpp"
     DEPENDS
       Fw_Time
       Fw_Types
@@ -135,6 +139,7 @@ add_named_os_module(Console Fw_Logger)
 add_named_os_module("File;FileSystem;Directory" Utils_Hash)
 add_named_os_module(Task ${CMAKE_THREAD_LIBS_INIT})
 add_named_os_module("Mutex;Condition")
+add_named_os_module(CountingSemaphore)
 add_named_os_module(Queue)
 add_named_os_module(Cpu)
 add_named_os_module(Memory)
@@ -147,6 +152,22 @@ register_fprime_ut(
     "${CMAKE_CURRENT_LIST_DIR}/test/ut/IntervalTimerTest.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/test/ut/OsValidateFileTest.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/test/ut/OsMutexBasicLockableTest.cpp"
+)
+
+register_fprime_ut(
+    Os_FilePathUtils_Test
+  SOURCES
+    "${CMAKE_CURRENT_LIST_DIR}/test/ut/FilePathUtilsTest.cpp"
+  DEPENDS
+    Os
+)
+
+register_fprime_ut(
+    Os_SandboxedFile_Test
+  SOURCES
+    "${CMAKE_CURRENT_LIST_DIR}/test/ut/SandboxedFileTest.cpp"
+  DEPENDS
+    Os
 )
 
 if (BUILD_TESTING)
