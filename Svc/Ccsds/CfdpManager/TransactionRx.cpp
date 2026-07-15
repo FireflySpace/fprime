@@ -301,8 +301,7 @@ void Transaction::rTick(int *cont /* unused */) {
         sret = this->m_engine->sendAck(this, ACK_TXN_STATUS_ACTIVE, FILE_DIRECTIVE_END_OF_FILE,
                                static_cast<ConditionCode>(this->m_state_data.receive.r2.eof_cc),
                                this->m_history->peer_eid, this->m_history->seq_num);
-        FW_ASSERT(sret != Cfdp::Status::SEND_PDU_ERROR);
-        // FW_ASSERT(sret != Cfdp::Status::SEND_PDU_ERROR);
+        FW_ASSERT(sret != Cfdp::Status::ERROR);
 
         /* if Cfdp::Status::SUCCESS, then move on in the state machine. A serialization error is
          * already logged by serializeAndSendPdu(), so treat anything other than NO_BUF_AVAIL as done. */
@@ -1092,8 +1091,8 @@ Status::T Transaction::r2SubstateSendFin() {
     {
         sret = this->m_engine->sendFin(this, this->m_state_data.receive.r2.dc, this->m_state_data.receive.r2.fs,
                                static_cast<ConditionCode>(TxnStatusToConditionCode(this->m_history->txn_stat)));
-        /* CFDP_SendFin does not return SEND_PDU_ERROR */
-        FW_ASSERT(sret != Cfdp::Status::SEND_PDU_ERROR);
+        /* CFDP_SendFin does not return a generic serialization ERROR */
+        FW_ASSERT(sret != Cfdp::Status::ERROR);
         this->m_state_data.receive.sub_state =
             RX_SUB_STATE_CLOSEOUT_SYNC; /* whether or not FIN send successful, ok to transition state */
         if (sret != Cfdp::Status::SUCCESS)
