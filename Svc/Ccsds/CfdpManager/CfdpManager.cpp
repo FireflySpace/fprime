@@ -266,7 +266,7 @@ void CfdpManager::sendFileComplete(Svc::SendFileStatus::T status)
 // ----------------------------------------------------------------------
 
 void CfdpManager ::SendFile_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U8 channelId, EntityId destId,
-                                       Class cfdpClass, Keep keep, U8 priority,
+                                       const Class& cfdpClass, const Keep& keep, U8 priority,
                                        const Fw::CmdStringArg& sourceFileName,
                                        const Fw::CmdStringArg& destFileName)
 {
@@ -295,7 +295,7 @@ void CfdpManager ::SendFile_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U8 chann
 }
 
 void CfdpManager ::PlaybackDirectory_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U8 channelId, EntityId destId,
-                                                Class cfdpClass, Keep keep, U8 priority,
+                                                const Class& cfdpClass, const Keep& keep, U8 priority,
                                                 const Fw::CmdStringArg& sourceDirectory,
                                                 const Fw::CmdStringArg& destDirectory)
 {
@@ -322,7 +322,7 @@ void CfdpManager ::PlaybackDirectory_cmdHandler(FwOpcodeType opCode, U32 cmdSeq,
 }
 
 void CfdpManager ::PollDirectory_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U8 channelId, U8 pollId,
-                                            EntityId destId, Class cfdpClass, U8 priority,
+                                            EntityId destId, const Class& cfdpClass, U8 priority,
                                             U32 interval, const Fw::CmdStringArg& sourceDirectory,
                                             const Fw::CmdStringArg& destDirectory)
 {
@@ -375,7 +375,7 @@ void CfdpManager ::StopPollDirectory_cmdHandler(FwOpcodeType opCode, U32 cmdSeq,
     this->cmdResponse_out(opCode, cmdSeq, rspStatus);
 }
 
-void CfdpManager ::SetChannelFlow_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U8 channelId, Flow flowState)
+void CfdpManager ::SetChannelFlow_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U8 channelId, const Flow& flowState)
 {
     Fw::CmdResponse::T rspStatus = Fw::CmdResponse::OK;
 
@@ -398,7 +398,7 @@ void CfdpManager ::SuspendResumeTransaction_cmdHandler(
     U8 channelId,
     TransactionSeq transactionSeq,
     EntityId entityId,
-    SuspendResume action)
+    const SuspendResume& action)
 {
     Fw::CmdResponse::T rspStatus = Fw::CmdResponse::OK;
 
