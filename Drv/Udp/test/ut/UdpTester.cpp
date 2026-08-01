@@ -163,6 +163,43 @@ void UdpTester ::test_advanced_reconnect() {
     test_with_loop(10, true);  // Up to 10 * RECONNECT_MS
 }
 
+void UdpTester ::test_recv_thread_shutdown_on_destruct() {
+    // Destroy a component with a live read thread. Its destructor must stop/join the
+    // thread; otherwise readLoop() hits the pure-virtual base and crashes. Heap
+    // component destroyed while this tester (its port peer) is still alive.
+    U16 port1 = Drv::Test::get_free_port(true);
+    ASSERT_NE(0, port1);
+    U16 port2 = port1;
+    uint8_t attempt_to_find_available_port = std::numeric_limits<uint8_t>::max();
+    while ((port1 == port2) && attempt_to_find_available_port > 0) {
+        port2 = Drv::Test::get_free_port(true);
+        ASSERT_NE(0, port2);
+        --attempt_to_find_available_port;
+    }
+    if (port2 == port1) {
+        GTEST_SKIP() << "Could not find two unique and available UDP ports. Skipping test.";
+    }
+
+    UdpComponentImpl* subject = new UdpComponentImpl("UdpDtor");
+    subject->init(TEST_INSTANCE_ID + 1);
+    subject->set_allocate_OutputPort(0, this->get_from_allocate(0));
+    subject->set_deallocate_OutputPort(0, this->get_from_deallocate(0));
+    subject->set_ready_OutputPort(0, this->get_from_ready(0));
+    subject->set_recv_OutputPort(0, this->get_from_recv(0));
+
+    subject->configureSend("127.0.0.1", port1, 0, 100);
+    subject->configureRecv("127.0.0.1", port2);
+    Os::TaskString name("dtor receiver thread");
+    subject->start(name, true, Os::Task::TASK_PRIORITY_DEFAULT, Os::Task::TASK_DEFAULT);
+
+    // Let the thread open, then destroy it while it is still running.
+    for (U32 i = 0; i < Drv::Test::get_configured_delay_ms() / 10 + 1 && not subject->isOpened(); i++) {
+        Os::Task::delay(Fw::TimeInterval(0, 10000));
+    }
+    EXPECT_TRUE(subject->isOpened());
+    delete subject;  // no explicit stop()/join(); the destructor must handle it
+}
+
 void UdpTester ::test_buffer_deallocation() {
     U8 data[1];
     Fw::Buffer buffer(data, sizeof(data));

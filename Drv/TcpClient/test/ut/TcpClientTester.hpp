@@ -65,6 +65,8 @@ class TcpClientTester : public TcpClientGTestBase {
 
     void test_buffer_deallocation();
 
+    void test_recv_thread_shutdown_on_destruct();
+
   private:
     // ----------------------------------------------------------------------
     // Handler overrides for typed from ports

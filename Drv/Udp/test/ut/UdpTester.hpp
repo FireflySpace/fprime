@@ -76,6 +76,9 @@ class UdpTester : public UdpGTestBase {
     //! Test buffer deallocation
     void test_buffer_deallocation();
 
+    //! Test that a running receive thread is shut down by the component destructor
+    void test_recv_thread_shutdown_on_destruct();
+
     // Helpers
     void test_with_loop(U32 iterations, bool recv_thread = false, bool send_only = false);
 

@@ -19,6 +19,11 @@ TEST(Nominal, UdpBasicReceiveThread) {
     tester.test_receive_thread();
 }
 
+TEST(Nominal, UdpRecvThreadShutdownOnDestruct) {
+    Drv::UdpTester tester;
+    tester.test_recv_thread_shutdown_on_destruct();
+}
+
 TEST(Reconnect, UdpMultiMessaging) {
     Drv::UdpTester tester;
     tester.test_multiple_messaging();

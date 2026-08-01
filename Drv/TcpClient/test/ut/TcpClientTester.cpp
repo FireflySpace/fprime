@@ -181,6 +181,40 @@ void TcpClientTester ::test_no_automatic_recv_connection() {
     server.terminate(server_fd);
 }
 
+void TcpClientTester ::test_recv_thread_shutdown_on_destruct() {
+    // Destroy a component with a live read thread. Its destructor must stop/join the
+    // thread; otherwise readLoop() hits the pure-virtual base and crashes. Heap
+    // component destroyed while this tester (its port peer) is still alive.
+    TcpClientComponentImpl* subject = new TcpClientComponentImpl("TcpClientDtor");
+    subject->init(TEST_INSTANCE_ID + 1);
+    subject->set_allocate_OutputPort(0, this->get_from_allocate(0));
+    subject->set_deallocate_OutputPort(0, this->get_from_deallocate(0));
+    subject->set_ready_OutputPort(0, this->get_from_ready(0));
+    subject->set_recv_OutputPort(0, this->get_from_recv(0));
+
+    Drv::TcpServerSocket server;
+    Drv::SocketDescriptor server_fd;
+    U16 port = 0;
+    server.configure("127.0.0.1", port, 0, 100);
+    ASSERT_EQ(server.startup(server_fd), SOCK_SUCCESS) << "TCP server startup error: " << strerror(errno);
+    subject->configure("127.0.0.1", server.getListenPort(), 0, 100);
+
+    Os::TaskString name("dtor receiver thread");
+    subject->setAutomaticOpen(true);
+    subject->start(name, Os::Task::TASK_PRIORITY_DEFAULT, Os::Task::TASK_DEFAULT);
+
+    // Let the thread come up and connect, then destroy it while it is still running.
+    for (U32 i = 0; i < Drv::Test::get_configured_delay_ms() / 10 + 1 && not subject->isOpened(); i++) {
+        Os::Task::delay(Fw::TimeInterval(0, 10000));
+    }
+    EXPECT_TRUE(subject->isOpened());
+    delete subject;  // no explicit stop()/join(); the destructor must handle it
+
+    Drv::Test::drain(server, server_fd);
+    server.close(server_fd);
+    server.terminate(server_fd);
+}
+
 void TcpClientTester ::test_buffer_deallocation() {
     U8 data[1];
     Fw::Buffer buffer(data, sizeof(data));

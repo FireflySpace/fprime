@@ -19,6 +19,11 @@ TEST(Nominal, TcpClientBufferDeallocation) {
     tester.test_buffer_deallocation();
 }
 
+TEST(Nominal, TcpClientRecvThreadShutdownOnDestruct) {
+    Drv::TcpClientTester tester;
+    tester.test_recv_thread_shutdown_on_destruct();
+}
+
 TEST(Reconnect, TcpClientMultiMessaging) {
     Drv::TcpClientTester tester;
     tester.test_multiple_messaging();

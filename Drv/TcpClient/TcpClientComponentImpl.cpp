@@ -32,7 +32,14 @@ SocketIpStatus TcpClientComponentImpl::configure(const char* const ipv4_address,
     return m_socket.configure(ipv4_address, port, send_timeout_seconds, send_timeout_microseconds);
 }
 
-TcpClientComponentImpl::~TcpClientComponentImpl() {}
+TcpClientComponentImpl::~TcpClientComponentImpl() {
+    // Stop and join the read task before destruction. readLoop() calls the virtual
+    // sendBuffer()/getSocketHandler(), implemented here; if the task outlived the
+    // vtable rewind to the base it would hit pure virtual method called. Must be in
+    // the leaf dtor: getSocketHandler() still resolves here, not from the base dtor.
+    this->stop();
+    (void)this->join();
+}
 
 // ----------------------------------------------------------------------
 // Implementations for socket read task virtual methods

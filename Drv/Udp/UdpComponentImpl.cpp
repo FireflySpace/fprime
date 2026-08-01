@@ -36,7 +36,14 @@ SocketIpStatus UdpComponentImpl::configureRecv(const char* const ipv4_address, c
     return m_socket.configureRecv(ipv4_address, port);
 }
 
-UdpComponentImpl::~UdpComponentImpl() {}
+UdpComponentImpl::~UdpComponentImpl() {
+    // Stop and join the read task before destruction. readLoop() calls the virtual
+    // sendBuffer()/getSocketHandler(), implemented here; if the task outlived the
+    // vtable rewind to the base it would hit pure virtual method called. Must be in
+    // the leaf dtor: getSocketHandler() still resolves here, not from the base dtor.
+    this->stop();
+    (void)this->join();
+}
 
 U16 UdpComponentImpl::getRecvPort() {
     return this->m_socket.getRecvPort();
