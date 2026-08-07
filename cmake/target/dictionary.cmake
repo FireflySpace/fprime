@@ -46,11 +46,13 @@ function(dictionary_add_deployment_target MODULE TARGET SOURCES DEPENDENCIES FUL
             get_filename_component(DICTIONARY_FILE_NAME "${DICTIONARY_FILE}" NAME)
             list(APPEND INSTALLED_FILES "${FPRIME_INSTALL_DEST}/${TOOLCHAIN_NAME}/${MODULE}/dict/${DICTIONARY_FILE_NAME}")
         endforeach()
+        # touch after install: whole-second vs nanosecond mtime
         add_custom_command(OUTPUT ${INSTALLED_FILES} COMMAND "${CMAKE_COMMAND}"
             -DCMAKE_INSTALL_COMPONENT=${MODULE}_${TARGET}
             -DFPRIME_INSTALL_DEST=${FPRIME_INSTALL_DEST}
             -DFPRIME_BUILD_DIR=${CMAKE_BINARY_DIR}
             -P ${FPRIME_FRAMEWORK_PATH}/cmake/target/fprime_install.cmake
+            COMMAND "${CMAKE_COMMAND}" -E touch_nocreate ${INSTALLED_FILES}
             DEPENDS ${AUTOCODER_GENERATED_OTHER})
         list(APPEND DICTIONARY_INSTALLED_FILES ${INSTALLED_FILES})
     endif()
@@ -67,11 +69,13 @@ function(dictionary_add_deployment_target MODULE TARGET SOURCES DEPENDENCIES FUL
                 get_filename_component(DICTIONARY_FILE_NAME "${DICTIONARY_FILE}" NAME)
                 list(APPEND INSTALLED_FILES "${FPRIME_INSTALL_DEST}/${TOOLCHAIN_NAME}/${MODULE}/dict/${DICTIONARY_FILE_NAME}")
             endforeach()
+            # touch after install: whole-second vs nanosecond mtime
             add_custom_command(OUTPUT ${INSTALLED_FILES} COMMAND "${CMAKE_COMMAND}"
                 -DCMAKE_INSTALL_COMPONENT=${MODULE}_${DEPENDENCY}_${TARGET}
                 -DFPRIME_INSTALL_DEST=${FPRIME_INSTALL_DEST}
                 -DFPRIME_BUILD_DIR=${CMAKE_BINARY_DIR}
                 -P ${FPRIME_FRAMEWORK_PATH}/cmake/target/fprime_install.cmake
+                COMMAND "${CMAKE_COMMAND}" -E touch_nocreate ${INSTALLED_FILES}
                 DEPENDS ${DICTIONARY_FILES})
             list(APPEND DICTIONARY_INSTALLED_FILES ${INSTALLED_FILES})
         endif()
