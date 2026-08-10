@@ -77,6 +77,7 @@ Channel::Channel(Engine* engine, U8 channelId, CfdpManager* cfdpManager) :
 
     // Initialize poll directory playback state
     for (U32 i = 0; i < CFDP_MAX_POLLING_DIR_PER_CHAN; i++) {
+        m_polldir[i].enabled = Fw::Enabled::DISABLED;
         m_polldir[i].pb.busy = false;
         m_polldir[i].pb.diropen = false;
         m_polldir[i].pb.counted = false;
