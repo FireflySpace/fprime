@@ -343,7 +343,6 @@ void Channel::processPollingDirectories()
     CfdpPollDir* pd;
     U32 i;
     U8 poll_count = 0;
-    Status::T status;
 
     for (i = 0; i < CFDP_MAX_POLLING_DIR_PER_CHAN; ++i)
     {
@@ -355,22 +354,19 @@ void Channel::processPollingDirectories()
 
             if ((pd->pb.busy == false) && (pd->pb.num_ts == 0))
             {
-                if ((pd->intervalTimer.getStatus() != Timer::Status::RUNNING) && (pd->intervalSec > 0))
+                if (pd->intervalTimer.getStatus() == Timer::Status::EXPIRED)
                 {
-                    // timer was not set, so set it now
-                    pd->intervalTimer.setTimer(pd->intervalSec);
-                }
-                else if (pd->intervalTimer.getStatus() == Timer::Status::EXPIRED)
-                {
-                    // the timer has expired
-                    status = m_engine->playbackDirInitiate(&pd->pb, pd->srcDir, pd->dstDir, pd->cfdpClass,
-                                                          Cfdp::Keep::DELETE, m_channelId, pd->priority,
-                                                          pd->destEid);
-                    if (status != Cfdp::Status::SUCCESS)
+                    // the timer has expired, so initiate a playback of the directory.
+                    // The return status is intentionally ignored: playbackDirInitiate
+                    // already emits an event on failure and the timer is re-armed
+                    // below regardless so polling retries after the interval.
+                    (void)m_engine->playbackDirInitiate(&pd->pb, pd->srcDir, pd->dstDir, pd->cfdpClass,
+                                                        Cfdp::Keep::DELETE, m_channelId, pd->priority,
+                                                        pd->destEid);
+                    // re-arm the timer for the next interval. The timer only ticks
+                    // down while the playback is not busy.
+                    if (pd->intervalSec > 0)
                     {
-                        // error occurred in playback directory, so reset the timer
-                        // an event is sent when initiating playback directory so there is no reason to
-                        // to have another here
                         pd->intervalTimer.setTimer(pd->intervalSec);
                     }
                 }
