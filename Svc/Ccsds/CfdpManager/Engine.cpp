@@ -1010,12 +1010,12 @@ void Engine::finishTransaction(Transaction* txn, bool keep_history) {
                 this->m_manager->log_ACTIVITY_HI_TxFileTransferCompleted(
                     txn->m_txn_class, txn->m_history->seq_num, txn->m_history->src_eid,
                     txn->m_history->fnames.src_filename, txn->m_history->peer_eid, txn->m_history->fnames.dst_filename,
-                    static_cast<U32>(txn->m_fsize));
+                    txn->m_fsize);
             } else if (txn->m_history->dir == Direction::DIRECTION_RX) {
                 this->m_manager->log_ACTIVITY_HI_RxFileTransferCompleted(
                     txn->m_txn_class, txn->m_history->seq_num, txn->m_history->src_eid,
                     txn->m_history->fnames.src_filename, m_manager->getLocalEidParam(),
-                    txn->m_history->fnames.dst_filename, static_cast<U32>(txn->m_fsize));
+                    txn->m_history->fnames.dst_filename, txn->m_fsize);
             }
         } else {
             // Log failure events for failed transactions

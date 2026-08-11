@@ -24,8 +24,10 @@ void PduHeader::initialize(PduTypeEnum::T type,
     this->m_pduType = (type == PduTypeEnum::FILE_DATA) ? PduType::PDU_TYPE_FILE_DATA : PduType::PDU_TYPE_DIRECTIVE;
     this->m_direction = direction;
     this->m_class = txmMode;
-    this->m_crcFlag = CrcFlag::CRC_NOT_PRESENT;                // CRC not currently supported
-    this->m_largeFileFlag = LargeFileFlag::LARGE_FILE_32_BIT;  // 32-bit file sizes
+    this->m_crcFlag = CrcFlag::CRC_NOT_PRESENT;  // CRC not currently supported
+    // Flag tracks the configured FileSize width; fields are serialized at sizeof(FileSize)
+    this->m_largeFileFlag =
+        (sizeof(FileSize) == 8) ? LargeFileFlag::LARGE_FILE_64_BIT : LargeFileFlag::LARGE_FILE_32_BIT;
     this->m_segmentationControl = 0;
     this->m_segmentMetadataFlag = 0;
     this->m_pduDataLength = 0;  // To be set later

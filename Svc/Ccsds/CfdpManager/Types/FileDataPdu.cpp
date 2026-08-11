@@ -31,12 +31,8 @@ void FileDataPdu::initialize(PduDirection direction,
 U32 FileDataPdu::getBufferSize() const {
     U32 size = this->m_header.getBufferSize();
 
-    // Offset field size depends on large file flag
-    if (this->m_header.m_largeFileFlag == LargeFileFlag::LARGE_FILE_64_BIT) {
-        size += static_cast<U32>(sizeof(U64));  // 8-byte offset
-    } else {
-        size += static_cast<U32>(sizeof(U32));  // 4-byte offset
-    }
+    // Offset field width tracks the configured FileSize type (see CfdpCfg.fpp)
+    size += static_cast<U32>(sizeof(FileSize));
 
     size += this->m_dataSize;  // actual data
     return size;
@@ -45,12 +41,8 @@ U32 FileDataPdu::getBufferSize() const {
 U32 FileDataPdu::getMaxFileDataSize() {
     U32 size = this->m_header.getBufferSize();
 
-    // Offset field size depends on large file flag
-    if (this->m_header.m_largeFileFlag == LargeFileFlag::LARGE_FILE_64_BIT) {
-        size += static_cast<U32>(sizeof(U64));  // 8-byte offset
-    } else {
-        size += static_cast<U32>(sizeof(U32));  // 4-byte offset
-    }
+    // Offset field width tracks the configured FileSize type (see CfdpCfg.fpp)
+    size += static_cast<U32>(sizeof(FileSize));
 
     return MaxPduSize - size;
 }
@@ -103,16 +95,8 @@ Fw::SerializeStatus FileDataPdu::toSerialBuffer(Fw::SerialBuffer& serialBuffer) 
         return status;
     }
 
-    // Serialize offset - size depends on large file flag
-    if (this->m_header.m_largeFileFlag == LargeFileFlag::LARGE_FILE_64_BIT) {
-        // Serialize as 8 bytes (64-bit)
-        U64 offset64 = this->m_offset;
-        status = serialBuffer.serializeFrom(offset64);
-    } else {
-        // Serialize as 4 bytes (32-bit)
-        U32 offset32 = static_cast<U32>(this->m_offset);
-        status = serialBuffer.serializeFrom(offset32);
-    }
+    // Serialize offset at the configured FileSize width; fromSerialBuffer reads it back the same way
+    status = serialBuffer.serializeFrom(this->m_offset);
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
     }

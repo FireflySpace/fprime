@@ -735,8 +735,9 @@ void Transaction::r1SubstateRecvFileData(const Fw::Buffer& buffer) {
     }
 
     if (ret == Cfdp::Status::SUCCESS) {
-        /* class 1 digests CRC */
-        this->m_crc.update(fd.getData(), fd.getOffset(), static_cast<U32>(fd.getDataSize()));
+        /* class 1 digests CRC. The CCSDS checksum only uses offset % 4 for word alignment, which a
+           U32 truncation preserves (2^32 is a multiple of 4), so a >4 GiB offset stays correct. */
+        this->m_crc.update(fd.getData(), static_cast<U32>(fd.getOffset()), static_cast<U32>(fd.getDataSize()));
     } else {
         /* Reset transaction on failure */
         this->r1Reset();
@@ -952,7 +953,8 @@ Status::T Transaction::r2CalcCrcChunk() {
                     this->m_cfdpManager->incrementFaultFileRead(this->m_chan_num);
                     ret = Cfdp::Status::ERROR;
                 } else {
-                    this->m_crc.update(buf, this->m_state_data.receive.r2.rx_crc_calc_bytes,
+                    // Offset narrowed to U32 is safe: checksum only uses offset % 4 (see r1 CRC note)
+                    this->m_crc.update(buf, static_cast<U32>(this->m_state_data.receive.r2.rx_crc_calc_bytes),
                                        static_cast<U32>(read_size));
                     this->m_state_data.receive.r2.rx_crc_calc_bytes += static_cast<FileSize>(read_size);
                     this->m_state_data.receive.cached_pos = this->m_state_data.receive.r2.rx_crc_calc_bytes;

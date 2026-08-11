@@ -197,7 +197,7 @@ event RxSeekFailed(
     cfdpClass: Cfdp.Class @< CFDP class
     srcEid: U32 @< Source entity ID
     seqNum: U32 @< Transaction sequence number
-    offset: U32 @< Offset that failed to seek
+    offset: Cfdp.FileSize @< Offset that failed to seek
     status: I32 @< File operation status
 ) \
     severity warning low \
@@ -217,9 +217,9 @@ event RxFileDataOutOfBounds(
     cfdpClass: Cfdp.Class @< CFDP class
     srcEid: U32 @< Source entity ID
     seqNum: U32 @< Transaction sequence number
-    offset: U32 @< File data offset from PDU
+    offset: Cfdp.FileSize @< File data offset from PDU
     dataSize: U32 @< File data size from PDU
-    fileSize: U32 @< Bound applied: declared file size from metadata, or 2^32-1 if no metadata received yet
+    fileSize: Cfdp.FileSize @< Bound applied: declared file size from metadata, or max FileSize if none received yet
 ) \
     severity warning low \
     format "RX class {} transaction {}:{} file data [{}, +{}] exceeds file size bound {}, PDU rejected"
@@ -228,8 +228,8 @@ event RxFileSizeMismatch(
     cfdpClass: Cfdp.Class @< CFDP class
     srcEid: U32 @< Source entity ID
     seqNum: U32 @< Transaction sequence number
-    expected: U32 @< Expected file size from metadata
-    actual: U32 @< Actual file size from EOF
+    expected: Cfdp.FileSize @< Expected file size from metadata
+    actual: Cfdp.FileSize @< Actual file size from EOF
 ) \
     severity warning low \
     format "RX class {} transaction {}:{} EOF file size mismatch: expected {} got {}"
@@ -422,7 +422,7 @@ event TxFileTransferStarted(
     srcFile: string size MaxFilePathSize @< Source filename
     destEid: U32 @< Destination entity ID
     destFile: string size MaxFilePathSize @< Destination filename
-    fileSize: U32 @< File size in bytes
+    fileSize: Cfdp.FileSize @< File size in bytes
 ) \
     severity activity high \
     format "TX {} transaction {} transfer started, {}:{} -> {}:{}, {} bytes"
@@ -434,7 +434,7 @@ event TxFileTransferCompleted(
     srcFile: string size MaxFilePathSize @< Source filename
     destEid: U32 @< Destination entity ID
     destFile: string size MaxFilePathSize @< Destination filename
-    fileSize: U32 @< File size in bytes
+    fileSize: Cfdp.FileSize @< File size in bytes
 ) \
     severity activity high \
     format "TX {} transaction {} completed, {}:{} -> {}:{}, {} bytes"
@@ -458,7 +458,7 @@ event RxFileTransferCompleted(
     srcFile: string size MaxFilePathSize @< Source filename
     destEid: U32 @< Destination entity ID
     destFile: string size MaxFilePathSize @< Destination filename
-    fileSize: U32 @< File size in bytes
+    fileSize: Cfdp.FileSize @< File size in bytes
 ) \
     severity activity high \
     format "RX {} transaction {} completed, {}:{} -> {}:{}, {} bytes"

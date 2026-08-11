@@ -404,7 +404,8 @@ Status::T Transaction::sSendFileData(FileSize foffs, FileSize bytes_to_read, U8 
                   static_cast<FwAssertArgType>(actual_bytes), static_cast<FwAssertArgType>(this->m_fsize));
 
         if (calc_crc) {
-            this->m_crc.update(fileDataBuffer, foffs, static_cast<U32>(actual_bytes));
+            // Offset narrowed to U32 is safe: checksum only uses offset % 4 (see TransactionRx r1 CRC note)
+            this->m_crc.update(fileDataBuffer, static_cast<U32>(foffs), static_cast<U32>(actual_bytes));
         }
 
         *bytes_processed = static_cast<U32>(actual_bytes);
@@ -552,7 +553,7 @@ void Transaction::sSubstateSendMetadata() {
             this->m_cfdpManager->log_ACTIVITY_HI_TxFileTransferStarted(
                 this->getClass(), this->m_history->seq_num, this->m_history->src_eid,
                 this->m_history->fnames.src_filename, this->m_history->peer_eid, this->m_history->fnames.dst_filename,
-                static_cast<U32>(this->m_fsize));
+                this->m_fsize);
         }
         /* if status==Cfdp::Status::SEND_PDU_NO_BUF_AVAIL_ERROR, then the send buffer is throttled;
            leave success==true and retry the metadata send on the next cycle */
