@@ -22,6 +22,7 @@
 #include <Svc/Ccsds/CfdpManager/Types/PduBase.hpp>
 #include <Svc/Ccsds/CfdpManager/Utils.hpp>
 #include <cstring>
+#include <limits>
 
 using namespace Svc::Ccsds;
 using namespace Svc::Ccsds::Cfdp;
@@ -482,8 +483,9 @@ TEST(FileDataPduHelper, GetBufferSizeAndMaxSize) {
     pdu.initialize(PduDirection::DIRECTION_TOWARD_RECEIVER, Cfdp::Class::CLASS_2, 1, 2, 3, 100, sizeof(testData),
                    testData);
 
-    // 32-bit large-file flag path: header + offset(4) + data
-    U32 expectedSize = pdu.asHeader().getBufferSize() + 4 + static_cast<U32>(sizeof(testData));
+    // header + offset(sizeof(FileSize)) + data
+    U32 expectedSize =
+        pdu.asHeader().getBufferSize() + static_cast<U32>(sizeof(FileSize)) + static_cast<U32>(sizeof(testData));
     EXPECT_EQ(expectedSize, pdu.getBufferSize());
 
     // Max payload fits within one PDU and leaves room for header + offset
@@ -588,6 +590,43 @@ TEST(FileDataPduHelper, TruncatedOffsetRejected) {
 }
 
 // ======================================================================
+// Max file size coverage. Round-trips the maximum representable FileSize
+// through the offset (FileData) and file-size (EOF) fields for the configured
+// width, catching any narrowing above the PDU layer. Runs under both U32
+// (4 GiB - 1) and U64 (full 64-bit) configurations.
+// ======================================================================
+
+TEST(LargeFile, MaxFileSizeRoundTrip) {
+    const FileSize maxSize = std::numeric_limits<FileSize>::max();
+    U8 storage[512];
+
+    // FileData PDU offset
+    const U8 testData[] = {0xAA, 0xBB, 0xCC, 0xDD};
+    FileDataPdu fdTx;
+    fdTx.initialize(PduDirection::DIRECTION_TOWARD_RECEIVER, Cfdp::Class::CLASS_2, 1, 2, 3, maxSize, sizeof(testData),
+                    testData);
+    Fw::SerialBuffer fdSb(storage, sizeof(storage));
+    ASSERT_EQ(Fw::FW_SERIALIZE_OK, fdTx.serializeTo(fdSb));
+    FileDataPdu fdRx;
+    Fw::SerialBuffer fdRxSb(storage, static_cast<Fw::Serializable::SizeType>(fdSb.getSize()));
+    fdRxSb.setBuffLen(fdSb.getSize());
+    ASSERT_EQ(Fw::FW_SERIALIZE_OK, fdRx.deserializeFrom(fdRxSb));
+    EXPECT_EQ(maxSize, fdRx.getOffset());
+
+    // EOF PDU file size
+    EofPdu eofTx;
+    eofTx.initialize(PduDirection::DIRECTION_TOWARD_RECEIVER, Cfdp::Class::CLASS_2, 1, 2, 3,
+                     ConditionCode::CONDITION_CODE_NO_ERROR, 0x12345678, maxSize);
+    Fw::SerialBuffer eofSb(storage, sizeof(storage));
+    ASSERT_EQ(Fw::FW_SERIALIZE_OK, eofTx.serializeTo(eofSb));
+    EofPdu eofRx;
+    Fw::SerialBuffer eofRxSb(storage, static_cast<Fw::Serializable::SizeType>(eofSb.getSize()));
+    eofRxSb.setBuffLen(eofSb.getSize());
+    ASSERT_EQ(Fw::FW_SERIALIZE_OK, eofRx.deserializeFrom(eofRxSb));
+    EXPECT_EQ(maxSize, eofRx.getFileSize());
+}
+
+// ======================================================================
 // Phase B2 - NakPdu codec (Types/NakPdu.cpp)
 // ======================================================================
 
@@ -596,10 +635,12 @@ TEST(NakPduHelper, GetBufferSizeWithSegments) {
     pdu.initialize(PduDirection::DIRECTION_TOWARD_SENDER, Cfdp::Class::CLASS_2, 1, 2, 3, 0, 4096);
 
     U32 baseSize = pdu.getBufferSize();
+    // Each segment adds a start and end offset, both sizeof(FileSize) wide
+    const U32 segmentSize = 2 * static_cast<U32>(sizeof(FileSize));
     ASSERT_TRUE(pdu.addSegment(100, 200));
-    EXPECT_EQ(baseSize + 8, pdu.getBufferSize());  // 2 * sizeof(FileSize)
+    EXPECT_EQ(baseSize + segmentSize, pdu.getBufferSize());
     ASSERT_TRUE(pdu.addSegment(300, 400));
-    EXPECT_EQ(baseSize + 16, pdu.getBufferSize());
+    EXPECT_EQ(baseSize + 2 * segmentSize, pdu.getBufferSize());
 }
 
 TEST(NakPduHelper, RoundTripNoSegments) {

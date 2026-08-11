@@ -33,7 +33,7 @@ Transaction* CfdpManagerTester::setupTestTransaction(TxnState state,
                                                      U8 channelId,
                                                      const char* srcFilename,
                                                      const char* dstFilename,
-                                                     U32 fileSize,
+                                                     Cfdp::FileSize fileSize,
                                                      U32 sequenceId,
                                                      U32 peerId) {
     // For white box testing, directly use the first transaction for the specified channel
@@ -168,7 +168,7 @@ void CfdpManagerTester::verifyFileDataPdu(const Fw::Buffer& pduBuffer,
                                           U32 expectedSourceEid,
                                           U32 expectedDestEid,
                                           U32 expectedTransactionSeq,
-                                          U32 expectedOffset,
+                                          Cfdp::FileSize expectedOffset,
                                           U16 expectedDataSize,
                                           const char* filename,
                                           Svc::Ccsds::Cfdp::Class::T expectedClass) {
@@ -202,7 +202,7 @@ void CfdpManagerTester::verifyFileDataPdu(const Fw::Buffer& pduBuffer,
     EXPECT_EQ(expectedTransactionSeq, header.getTransactionSeq()) << "Transaction sequence mismatch";
 
     // Validate file data fields
-    U32 offset = fileDataPdu.getOffset();
+    Cfdp::FileSize offset = fileDataPdu.getOffset();
     U16 dataSize = fileDataPdu.getDataSize();
     const U8* pduData = fileDataPdu.getData();
 
@@ -291,9 +291,10 @@ void CfdpManagerTester::verifyEofPdu(const Fw::Buffer& pduBuffer,
         ASSERT_EQ(Os::File::OP_OK, fileStatus) << "Failed to read source file";
         ASSERT_EQ(expectedFileSize, bytesRead) << "Failed to read complete file";
 
-        // Compute CRC using CFDP Checksum
+        // Compute CRC using CFDP Checksum. Test files are small, so the whole-file
+        // length fits in the U32 the checksum takes (production chunks large files).
         CFDP::Checksum computedChecksum;
-        computedChecksum.update(fileData, 0, expectedFileSize);
+        computedChecksum.update(fileData, 0, static_cast<U32>(expectedFileSize));
         U32 expectedCrc = computedChecksum.getValue();
 
         delete[] fileData;

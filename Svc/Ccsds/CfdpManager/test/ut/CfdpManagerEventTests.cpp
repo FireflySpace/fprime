@@ -471,9 +471,8 @@ void CfdpManagerTester::testFailEofPduDeserializationEvent() {
     Fw::SerialBuffer sb(bufferData + descriptorSize, pduSize);
     eofPdu.serializeTo(sb);
 
-    // Step 5: Truncate EOF body (not header)
-    // Remove just enough to cause EOF body parsing failure
-    FwSizeType truncatedSize = (descriptorSize + sb.getSize()) - 4;
+    // Truncate the trailing file-size field so EOF body parsing fails
+    FwSizeType truncatedSize = (descriptorSize + sb.getSize()) - sizeof(Cfdp::FileSize);
     pduBuffer.setSize(truncatedSize);
 
     // Step 6: Send truncated EOF PDU

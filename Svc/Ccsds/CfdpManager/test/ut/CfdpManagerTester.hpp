@@ -96,7 +96,7 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
                                       U8 channelId,
                                       const char* srcFilename,
                                       const char* dstFilename,
-                                      U32 fileSize,
+                                      Cfdp::FileSize fileSize,
                                       U32 sequenceId,
                                       U32 peerId);
 
@@ -135,7 +135,7 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
                            U32 expectedSourceEid,
                            U32 expectedDestEid,
                            U32 expectedTransactionSeq,
-                           U32 expectedOffset,
+                           Cfdp::FileSize expectedOffset,
                            U16 expectedDataSize,
                            const char* filename,
                            Svc::Ccsds::Cfdp::Class::T expectedClass);

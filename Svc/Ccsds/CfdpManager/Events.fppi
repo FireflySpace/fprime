@@ -255,7 +255,7 @@ event RxSeekCrcFailed(
     cfdpClass: Cfdp.Class @< CFDP class
     srcEid: U32 @< Source entity ID
     seqNum: U32 @< Transaction sequence number
-    offset: U32 @< Offset that failed during CRC calculation
+    offset: Cfdp.FileSize @< Offset that failed during CRC calculation
     status: I32 @< File operation status
 ) \
     severity warning low \
@@ -275,8 +275,8 @@ event RxEofMdSizeMismatch(
     cfdpClass: Cfdp.Class @< CFDP class
     srcEid: U32 @< Source entity ID
     seqNum: U32 @< Transaction sequence number
-    mdSize: U32 @< File size from metadata
-    eofSize: U32 @< File size from EOF
+    mdSize: Cfdp.FileSize @< File size from metadata
+    eofSize: Cfdp.FileSize @< File size from EOF
 ) \
     severity warning low \
     format "RX class {} transaction {}:{} EOF/metadata size mismatch: metadata={}, EOF={}"
