@@ -427,8 +427,9 @@ void CfdpManagerTester::testPollDirectoryNominal() {
     this->sendCmd_StopPollDirectory(0, 0, channelId, pollId);
     this->component.doDispatch();
 
-    // Clean up directory
+    // Clean up directories
     Os::FileSystem::removeDirectory(srcDir.toChar());
+    Os::FileSystem::removeDirectory(dstDir.toChar());
 }
 
 void CfdpManagerTester::testPollDirectoryInvalidChannel() {
@@ -518,8 +519,9 @@ void CfdpManagerTester::testPollDirectoryBusy() {
     this->sendCmd_StopPollDirectory(0, 0, channelId, pollId);
     this->component.doDispatch();
 
-    // Clean up directory
+    // Clean up directories
     Os::FileSystem::removeDirectory(srcDir.toChar());
+    Os::FileSystem::removeDirectory(dstDir.toChar());
 }
 
 void CfdpManagerTester::testPollDirectoryInvalidInterval() {
@@ -636,6 +638,7 @@ void CfdpManagerTester::testPollDirectoryTimerExpiry() {
     // Clean up files/directory
     Os::FileSystem::removeFile(testFilePath.toChar());
     Os::FileSystem::removeDirectory(srcDir.toChar());
+    Os::FileSystem::removeDirectory(dstDir.toChar());
 }
 
 // ----------------------------------------------------------------------
