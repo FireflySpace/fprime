@@ -593,7 +593,7 @@ DpCatalog::ProcessFileStatus DpCatalog::processFile(const Fw::String& fullFile, 
         return ProcessFileStatus::QUIT;
     }
 
-    this->log_ACTIVITY_HI_DpFileAdded(canonicalFileName);
+    this->log_ACTIVITY_LO_DpFileAdded(canonicalFileName);
 
     // No need to track iterator state - begin() always gives us the highest priority entry
     // and we remove entries as we transmit them

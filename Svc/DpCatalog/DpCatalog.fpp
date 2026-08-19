@@ -378,7 +378,7 @@ module Svc {
     event DpFileAdded(
                           file: string size FileNameStringSize @< The file
       ) \
-      severity activity high \
+      severity activity low \
       id 43 \
       format "DP file {} added at runtime"
 
