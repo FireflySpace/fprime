@@ -85,7 +85,7 @@ Ports are organized as follows:
 
 | Name | Type | Port Type | Description |
 |------|------|-----------|-------------|
-| fileIn | guarded input | `Svc.SendFileRequest` | Programmatic file send request interface. Allows other components to initiate CFDP file transfers without using commands. Transaction arguments are populated from component parameters: `FileInDefaultChannel`, `FileInDefaultDestEntityId`, `FileInDefaultClass`, `FileInDefaultKeep`, and `FileInDefaultPriority`. The `offset` and `length` parameters are currently unsupported and must be `0`, or `STATUS_INVALID` is returned|
+| fileIn | guarded input | `Svc.SendFileRequest` | Programmatic file send request interface. Allows other components to initiate CFDP file transfers without using commands. The handler runs on the caller's thread and only validates the request and copies it into an internal queue; the transfer is initiated later on the component's active thread when `run1Hz` drains the queue, so all engine state is mutated on a single thread. The synchronous response therefore reports only acceptance: `STATUS_OK` if the request was queued, `STATUS_BUSY` if the queue (depth set by the `fileQueueDepth` argument to `configure()`) is full, or `STATUS_INVALID` if `offset`/`length` are non-zero (unsupported, must be `0`) or the filenames do not fit. The final transfer result is delivered later via `fileDoneOut`. Transaction arguments are populated from component parameters: `FileInDefaultChannel`, `FileInDefaultDestEntityId`, `FileInDefaultClass`, `FileInDefaultKeep`, and `FileInDefaultPriority`. |
 | fileDoneOut | output | `Svc.SendFileComplete` | Asynchronous notification of file transfer completion for transfers initiated via `fileIn` port. Provides final transfer status. Only invoked for port-initiated transactions (not command-initiated). |
 
 ## Usage Examples
@@ -120,6 +120,17 @@ The design of `CfdpManager` assumes the following:
 7. Received files are written to a temporary directory (`ChannelConfig.tmp_dir` per-channel parameter) during transfer and moved to their final destination upon successful completion.
 
 8. Port-initiated file transfers (via `fileIn`) use default configuration parameters (`FileInDefaultChannel`, `FileInDefaultDestEntityId`, `FileInDefaultClass`, `FileInDefaultKeep`, and `FileInDefaultPriority`).
+
+### Security Considerations
+
+CfdpManager follows a layered security architecture where authentication and authorization are enforced at lower network protocol layers rather than at the application layer:
+
+- **Physical/Network Layer Security**: Hardware encryption at the radio level, or network-layer protocols like Bundle Protocol Security or IPsec
+- **Application Layer**: CfdpManager assumes CFDP traffic originates from authenticated sources validated at lower layers
+
+CfdpManager accepts destination file paths as specified in incoming CFDP Metadata PDUs without application-layer path validation. This approach is consistent with the CCSDS 727.0-B-5 CFDP standard, which assumes operation over authenticated communication channels.
+
+For mission deployments, ensure radio links employ hardware encryption or cryptographic authentication, ground systems implement proper authentication and authorization controls, and operational procedures include verification of file paths before commanding transfers.
 
 ### Main Class Hierarchy
 
@@ -416,9 +427,9 @@ These types define the size of CFDP protocol fields:
 
 | Constant | Purpose |
 |----------|---------|
-| `CFDP_NAK_MAX_SEGMENTS` | Maximum NAK segments supported in a NAK PDU. When sending or receiving NAK PDUs, this is the maximum number of segment requests supported. Should match ground CFDP engine configuration. |
-| `CFDP_MAX_TLV` | Maximum TLVs (Type-Length-Value) per PDU. Limits the number of TLV metadata fields in EOF and FIN PDUs for diagnostic information (entity IDs, fault handler overrides, messages). |
-| `CFDP_R2_CRC_CHUNK_SIZE` | Class 2 CRC calculation chunk size. Buffer size for CRC calculation upon file completion. Larger values use more stack but complete faster. Total bytes per scheduler cycle controlled by `RxCrcCalcBytesPerCycle` parameter. |
+| `NakMaxSegments` | Maximum NAK segments supported in a NAK PDU. When sending or receiving NAK PDUs, this is the maximum number of segment requests supported. Should match ground CFDP engine configuration. |
+| `MaxTlv` | Maximum TLVs (Type-Length-Value) per PDU. Limits the number of TLV metadata fields in EOF and FIN PDUs for diagnostic information (entity IDs, fault handler overrides, messages). |
+| `R2CrcChunkSize` | Class 2 CRC calculation chunk size. Buffer size for CRC calculation upon file completion. Larger values use more stack but complete faster. Total bytes per scheduler cycle controlled by `RxCrcCalcBytesPerCycle` parameter. |
 | `CFDP_CHANNEL_NUM_RX_CHUNKS_PER_TRANSACTION` | RX chunks per transaction per channel (array). For Class 2 receive transactions, each chunk tracks a contiguous received file segment. Used for gap detection and NAK generation. Array size must match `NumChannels`. |
 | `CFDP_CHANNEL_NUM_TX_CHUNKS_PER_TRANSACTION` | TX chunks per transaction per channel (array). For Class 2 transmit transactions, each chunk tracks a gap requested via NAK that needs retransmission. Array size must match `NumChannels`. |
 
@@ -426,12 +437,126 @@ These types define the size of CFDP protocol fields:
 
 | Constant | Purpose |
 |----------|---------|
-| `CFDP_MAX_SIMULTANEOUS_RX` | Maximum simultaneous file receives. Each channel can support this many active/concurrent receive transactions. Contributes to total transaction pool size. |
-| `CFDP_MAX_COMMANDED_PLAYBACK_FILES_PER_CHAN` | Maximum commanded playback files per channel. Maximum number of outstanding ground-commanded file transmits per channel. |
-| `CFDP_MAX_COMMANDED_PLAYBACK_DIRECTORIES_PER_CHAN` | Maximum commanded playback directories per channel. Each channel can support this many ground-commanded directory playbacks. |
-| `CFDP_MAX_POLLING_DIR_PER_CHAN` | Maximum polling directories per channel. Determines the size of the per-channel polling directory array. |
-| `CFDP_NUM_TRANSACTIONS_PER_PLAYBACK` | Number of transactions per playback directory. Each playback/polling directory operation can have this many active transfers pending or active at once. |
-| `CFDP_NUM_HISTORIES_PER_CHANNEL` | Number of history entries per channel. Each channel maintains a circular buffer of completed transaction records for debugging and reference. Maximum value is 65536. |
+| `MaxSimultaneousRx` | Maximum simultaneous file receives. Each channel can support this many active/concurrent receive transactions. Contributes to total transaction pool size. |
+| `MaxCommandedPlaybackFilesPerChan` | Maximum commanded playback files per channel. Maximum number of outstanding ground-commanded file transmits per channel. |
+| `MaxCommandedPlaybackDirectoriesPerChan` | Maximum commanded playback directories per channel. Each channel can support this many ground-commanded directory playbacks. |
+| `MaxPollingDirPerChan` | Maximum polling directories per channel. Determines the size of the per-channel polling directory array. |
+| `NumTransactionsPerPlayback` | Number of transactions per playback directory. Each playback/polling directory operation can have this many active transfers pending or active at once. |
+| `NumHistoriesPerChannel` | Number of history entries per channel. Each channel maintains a circular buffer of completed transaction records for debugging and reference. Maximum value is 65536. |
+
+## Events
+
+The CFDP Manager provides comprehensive event reporting covering all aspects of file transfer operations, organized by functional category. Most events are warning-level to alert operators of potential issues, while activity-high events mark significant milestones like transfer start/completion and transaction control operations.
+
+### Command/Control Events
+
+| Event Name | Severity | Description |
+|------------|----------|-------------|
+| TxFileQueued | activity low | TX file queued for source file (transaction sequence number) |
+| SendFileInitiateFail | warning low | Failed to initiate file send transfer for source file |
+| UnsupportedSendFileArguments | warning low | Invalid send file port request with offset and length |
+| InvalidChannel | warning low | Invalid channel ID, maximum channel ID is specified |
+| PlaybackInitiated | activity low | Successfully initiated directory playback for source directory |
+| PollDirInitiated | activity low | Successfully initiated directory poll for source directory |
+| PollDirStopped | activity low | Successfully stopped directory poll for channel and poll index |
+| PollDirBusy | warning low | Cannot start directory poll - channel poll already in use |
+| PollDirNotActive | warning low | Cannot stop directory poll - channel poll is not active |
+| InvalidChannelPoll | warning low | Invalid poll ID, maximum poll ID is specified |
+| SetFlowState | activity low | Set channel to specified flow state |
+| ResetCounters | activity high | Reset telemetry counters for channel (0xFF indicates all channels) |
+
+### PDU Serialization/Deserialization Errors
+
+| Event Name | Severity | Description |
+|------------|----------|-------------|
+| FailPduHeaderDeserialization | warning low | Failed to deserialize PDU header on channel |
+| FailPduSerialization | warning low | Failed to serialize PDU type on channel |
+| FailMetadataPduDeserialization | warning low | Failed to deserialize Metadata PDU on channel |
+| FailFileDataPduDeserialization | warning low | Failed to deserialize File Data PDU on channel |
+| FailEofPduDeserialization | warning low | Failed to deserialize EOF PDU on channel |
+| FailAckPduDeserialization | warning low | Failed to deserialize ACK PDU on channel |
+| FailFinPduDeserialization | warning low | Failed to deserialize FIN PDU on channel |
+| FailNakPduDeserialization | warning low | Failed to deserialize NAK PDU on channel |
+
+### RX Transaction Events
+
+| Event Name | Severity | Description |
+|------------|----------|-------------|
+| RxAckLimitReached | warning low | RX ACK limit reached for transaction, no fin-ack sent |
+| RxTempFileCreated | activity low | RX transaction creating temp file without metadata |
+| RxFileCreateFailed | warning low | RX transaction failed to create file |
+| RxCrcMismatch | warning low | RX transaction CRC mismatch: expected vs actual |
+| RxNakLimitReached | warning low | RX transaction NAK limit reached |
+| RxSeekFailed | warning low | RX transaction failed to seek to offset |
+| RxWriteFailed | warning low | RX transaction write failed: expected bytes vs actual bytes |
+| RxFileSizeMismatch | warning low | RX transaction EOF file size mismatch: expected vs actual |
+| RxEofCancelReceived | activity high | RX transaction cancelled by sender |
+| RxEofWithError | warning low | RX transaction received EOF with error condition code |
+| RxSeekCrcFailed | warning low | RX transaction failed to seek during CRC calculation |
+| RxReadCrcFailed | warning low | RX transaction failed to read during CRC calculation |
+| RxEofMdSizeMismatch | warning low | RX transaction EOF/metadata size mismatch |
+| RxFileRenameFailed | warning low | RX transaction failed to rename temp file to final file |
+| RxFileReopenFailed | warning low | RX transaction failed to reopen file after rename |
+| RxInactivityTimeout | warning low | RX transaction inactivity timer expired |
+| RxInvalidDirectiveCode | warning low | RX transaction received invalid directive code for substate |
+| RxTransactionLimitReached | warning low | Dropping packet due to max RX transactions reached |
+
+### TX Transaction Events
+
+| Event Name | Severity | Description |
+|------------|----------|-------------|
+| TxAckLimitReached | warning low | TX transaction ACK limit reached, no eof-ack received |
+| TxInactivityTimeout | warning low | TX transaction inactivity timer expired |
+| TxZeroLengthFile | warning low | TX transaction cannot transfer zero-length file |
+| TxFileOpenFailed | warning low | TX transaction failed to open file |
+| TxFileSeekFailed | warning low | TX transaction failed to seek to beginning of file |
+| TxSendMetadataFailed | warning low | TX transaction failed to send metadata PDU |
+| TxEarlyFinReceived | warning low | TX transaction received early FIN, cancelling transfer |
+| TxInvalidNakPdu | warning low | TX transaction received invalid NAK PDU |
+| TxInvalidSegmentRequests | warning low | TX transaction received invalid NAK segment requests |
+| TxNonFileDirectivePduReceived | warning low | TX transaction received non-file-directive PDU |
+| TxInvalidDirectiveCode | warning low | TX transaction received invalid directive code for substate |
+| TxLateFinAcked | diagnostic | Retransmitted FIN acknowledged statelessly for an already-completed/recycled TX transaction (source EID, transaction sequence number) |
+
+### File Transfer Complete Events
+
+| Event Name | Severity | Description |
+|------------|----------|-------------|
+| TxFileTransferStarted | activity high | TX starting file transfer: source file -> dest file |
+| TxFileTransferCompleted | activity high | TX completed file transfer: source file -> dest file |
+| TxFileTransferFailed | warning low | TX transaction FAILED: source file -> dest file, error code |
+| RxFileTransferCompleted | activity high | RX completed file transfer: source file -> dest file |
+| RxFileTransferFailed | warning low | RX transaction FAILED: source file -> dest file, error code |
+| MetadataReceived | activity low | Metadata received for source and destination files |
+
+### Transaction Control Events
+
+| Event Name | Severity | Description |
+|------------|----------|-------------|
+| TransactionSuspended | activity low | Transaction suspended |
+| TransactionResumed | activity low | Transaction resumed |
+| TransactionCanceled | activity high | Transaction canceled |
+| TransactionAbandoned | activity high | Transaction abandoned |
+| TransactionNotFound | warning low | Transaction not found |
+
+### Miscellaneous/Diagnostic Events
+
+| Event Name | Severity | Description |
+|------------|----------|-------------|
+| BuffersExhausted | warning low | Unable to allocate a PDU buffer |
+| FailKeepFileMove | warning low | Failed to move source file to move directory |
+| FailPollFileMove | warning low | Failed to move source file to fail directory |
+| FileDataSegmentMetadata | warning low | File data PDU with unsupported segment metadata received |
+| ChunklistUnavailable | warning low | Cannot get chunklist, abandoning transaction |
+| UnhandledPduInIdleState | warning low | Unhandled PDU type received in idle state |
+| InvalidDestinationEid | warning low | Dropping packet for invalid destination entity ID |
+| MaxTxTransactionsReached | warning low | Maximum number of commanded TX files reached |
+| PlaybackDirOpenFailed | warning low | Failed to open playback directory |
+| PlaybackDirSlotUnavailable | warning low | No playback directory slot available |
+| DanglingFileHandleClosed | warning low | Closed dangling file handle for channel and transaction |
+| PlaybackDirReadFailed | warning low | Failed to read from playback directory |
+| ResetFreedTransaction | diagnostic | Attempt to reset a transaction that has already been freed |
+| FileRemoveFailed | warning low | Failed to remove file |
 
 ## Commands
 
@@ -445,6 +570,7 @@ These types define the size of CFDP protocol fields:
 | SuspendResumeTransaction | Suspend or resume a transaction. When suspended, the transaction remains in memory but stops making progress (no PDUs sent or processed, no timers tick). Useful during critical spacecraft operations. Takes an action parameter (SUSPEND or RESUME). Transactions are identified by channel ID, transaction sequence number, and entity ID. |
 | CancelTransaction | Gracefully cancel a transaction with protocol close-out. Sends FIN/ACK PDUs as appropriate for the transaction type and state. Transaction is removed from memory. Transactions are identified by channel ID, transaction sequence number, and entity ID. |
 | AbandonTransaction | Immediately terminate a transaction without protocol close-out. No FIN/ACK sent. Transaction is immediately removed from memory. Used for stuck or unresponsive transactions. Transactions are identified by channel ID, transaction sequence number, and entity ID. |
+| ResetCounters | Resets telemetry counters for the specified CFDP channel. Pass `channelId` 0xFF to reset all channels. |
 
 ## Parameters
 
@@ -482,11 +608,7 @@ CfdpManager's per-channel parameter architecture supports multiple mission profi
 
 ## Telemetry
 
-**Note:** Telemetry channels are currently **proposals** defined in [Telemetry.fppi](../Telemetry.fppi) but not yet implemented. Proposals are based on the CF implementation.
-
-### ChannelTelemetry
-
-An array of telemetry structures, one per CFDP channel. Each element is a `ChannelTelemetry` struct containing the following fields:
+Telemetry is emitted as the `ChannelTelemetry` array, one `ChannelTelemetry` struct per CFDP channel. Each struct contains the following fields:
 
 #### Receive Counters
 | Field | Type | Description |
@@ -496,11 +618,16 @@ An array of telemetry structures, one per CFDP channel. Each element is a `Chann
 | recvSpurious | U32 | Number of spurious PDUs received (PDUs for nonexistent or completed transactions) |
 | recvFileDataBytes | U64 | Total file data bytes received across all transactions |
 | recvNakSegmentRequests | U32 | Number of NAK segment requests received from peer entity |
+| recvPdu | U32 | Number of PDUs received with valid headers |
+| recvEofCanceled | U32 | Number of EOF PDUs received with cancellation condition code |
 
 #### Sent Counters
 | Field | Type | Description |
 |---|---|---|
 | sentNakSegmentRequests | U32 | Number of NAK segment requests sent to peer entity |
+| sentFileDataBytes | U64 | Total file data bytes sent across all transactions |
+| sentPdu | U32 | Number of PDUs sent with valid headers |
+| sentEofCanceled | U32 | Number of EOF PDUs sent with cancellation condition code |
 
 #### Fault Counters
 | Field | Type | Description |
@@ -516,6 +643,8 @@ An array of telemetry structures, one per CFDP channel. Each element is a `Chann
 | faultFileSeek | U32 | Number of file seek failures |
 | faultFileRename | U32 | Number of file rename failures |
 | faultDirectoryRead | U32 | Number of directory read failures during playback/poll operations |
+| faultRxEofError | U32 | Number of EOF PDUs received with error condition code (other than cancel) |
+| faultTxEofError | U32 | Number of EOF PDUs sent with error condition code (other than cancel) |
 
 #### Queue Depths
 | Field | Type | Description |

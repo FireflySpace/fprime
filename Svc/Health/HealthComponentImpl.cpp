@@ -44,7 +44,7 @@ void HealthImpl::init(const FwSizeType queueDepth, const FwEnumStoreType instanc
 }
 
 void HealthImpl::setPingEntries(PingEntry* pingEntries, FwIndexType numPingEntries, U32 watchDogCode) {
-    FW_ASSERT(pingEntries);
+    FW_ASSERT(pingEntries != nullptr);
     // make sure not asking for more pings than ports
     FW_ASSERT(numPingEntries <= NUM_PINGSEND_OUTPUT_PORTS);
 
@@ -109,19 +109,17 @@ void HealthImpl::Run_handler(const FwIndexType portNum, U32 context) {
                     // increment cycles for the entry
                     this->m_pingTrackerEntries[entry].cycleCount++;
                 } else {
-                    // check to see if it is at warning threshold
-                    if (this->m_pingTrackerEntries[entry].cycleCount ==
-                        this->m_pingTrackerEntries[entry].entry.warnCycles) {
+                    // check for FATAL timeout value first: warnCycles == fatalCycles is a legal
+                    // configuration, and the FATAL takes precedence over the warning
+                    if (this->m_pingTrackerEntries[entry].entry.fatalCycles ==
+                        this->m_pingTrackerEntries[entry].cycleCount) {
+                        Fw::LogStringArg _arg = this->m_pingTrackerEntries[entry].entry.entryName;
+                        this->log_FATAL_HLTH_PING_LATE(_arg);
+                    } else if (this->m_pingTrackerEntries[entry].cycleCount ==
+                               this->m_pingTrackerEntries[entry].entry.warnCycles) {
                         Fw::LogStringArg _arg = this->m_pingTrackerEntries[entry].entry.entryName;
                         this->log_WARNING_HI_HLTH_PING_WARN(_arg);
                         this->tlmWrite_PingLateWarnings(++this->m_warnings);
-                    } else {
-                        // check for FATAL timeout value
-                        if (this->m_pingTrackerEntries[entry].entry.fatalCycles ==
-                            this->m_pingTrackerEntries[entry].cycleCount) {
-                            Fw::LogStringArg _arg = this->m_pingTrackerEntries[entry].entry.entryName;
-                            this->log_FATAL_HLTH_PING_LATE(_arg);
-                        }
                     }  // if at warning or fatal threshold
 
                     this->m_pingTrackerEntries[entry].cycleCount++;
@@ -140,7 +138,7 @@ void HealthImpl::Run_handler(const FwIndexType portNum, U32 context) {
 // Command handler implementations
 // ----------------------------------------------------------------------
 
-void HealthImpl::HLTH_ENABLE_cmdHandler(const FwOpcodeType opCode, U32 cmdSeq, Fw::Enabled enable) {
+void HealthImpl::HLTH_ENABLE_cmdHandler(const FwOpcodeType opCode, U32 cmdSeq, const Fw::Enabled& enable) {
     this->m_enabled = enable;
     Fw::Enabled isEnabled = Fw::Enabled::DISABLED;
     if (enable == Fw::Enabled::ENABLED) {
@@ -153,7 +151,7 @@ void HealthImpl::HLTH_ENABLE_cmdHandler(const FwOpcodeType opCode, U32 cmdSeq, F
 void HealthImpl::HLTH_PING_ENABLE_cmdHandler(const FwOpcodeType opCode,
                                              U32 cmdSeq,
                                              const Fw::CmdStringArg& entry,
-                                             Fw::Enabled enable) {
+                                             const Fw::Enabled& enable) {
     // check to see if entry is in range
     FwIndexType entryIndex = this->findEntry(entry);
 
@@ -161,6 +159,9 @@ void HealthImpl::HLTH_PING_ENABLE_cmdHandler(const FwOpcodeType opCode,
         this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::VALIDATION_ERROR);
         return;
     }
+    FW_ASSERT(
+        entryIndex >= 0 && entryIndex < static_cast<FwIndexType>(FW_NUM_ARRAY_ELEMENTS(this->m_pingTrackerEntries)),
+        static_cast<FwAssertArgType>(entryIndex));
 
     this->m_pingTrackerEntries[entryIndex].enabled = enable.e;
     Fw::Enabled isEnabled(Fw::Enabled::DISABLED);

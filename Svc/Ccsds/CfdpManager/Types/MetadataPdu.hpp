@@ -7,9 +7,9 @@
 #ifndef Svc_Ccsds_Cfdp_MetadataPdu_HPP
 #define Svc_Ccsds_Cfdp_MetadataPdu_HPP
 
+#include <Fw/Types/String.hpp>
 #include <Svc/Ccsds/CfdpManager/Types/PduBase.hpp>
 #include <Svc/Ccsds/CfdpManager/Types/Types.hpp>
-#include <Fw/Types/String.hpp>
 #include <config/CfdpCfg.hpp>
 
 namespace Svc {
@@ -36,19 +36,24 @@ class MetadataPdu : public PduBase {
 
   public:
     //! Constructor
-    MetadataPdu() : m_sourceFilename(""), m_destFilename("") {}
+    MetadataPdu()
+        : m_closureRequested(0),
+          m_checksumType(ChecksumType::CHECKSUM_TYPE_MODULAR),
+          m_fileSize(0),
+          m_sourceFilename(""),
+          m_destFilename("") {}
 
     //! Initialize a Metadata PDU
     void initialize(PduDirection direction,
-                   Cfdp::Class::T txmMode,
-                   EntityId sourceEid,
-                   TransactionSeq transactionSeq,
-                   EntityId destEid,
-                   FileSize fileSize,
-                   const Fw::String& sourceFilename,
-                   const Fw::String& destFilename,
-                   ChecksumType checksumType,
-                   U8 closureRequested);
+                    Cfdp::Class::T txmMode,
+                    EntityId sourceEid,
+                    TransactionSeq transactionSeq,
+                    EntityId destEid,
+                    FileSize fileSize,
+                    const Fw::String& sourceFilename,
+                    const Fw::String& destFilename,
+                    ChecksumType checksumType,
+                    U8 closureRequested);
 
     //! Compute the buffer size needed
     U32 getBufferSize() const override;
@@ -80,7 +85,7 @@ class MetadataPdu : public PduBase {
     U8 getClosureRequested() const { return this->m_closureRequested; }
 
     //! Get directive code
-    FileDirective getDirectiveCode() const { return FILE_DIRECTIVE_METADATA; }
+    FileDirective getDirectiveCode() const { return FileDirective::FILE_DIRECTIVE_METADATA; }
 
   private:
     //! Initialize this MetadataPdu from a SerialBufferBase

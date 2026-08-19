@@ -96,13 +96,19 @@ void SpacePacketDeframer ::dataIn_handler(FwIndexType portNum, Fw::Buffer& data,
     }
 
     U16 apidValue = header.get_packetIdentification() & SpacePacketSubfields::ApidMask;
-    ComCfg::Apid::T apid = static_cast<ComCfg::Apid::T>(apidValue);
+    ComCfg::Apid::T apid = ComCfg::Apid::isValid(apidValue) ? static_cast<ComCfg::Apid::T>(apidValue)
+                                                            : ComCfg::Apid::INVALID_UNINITIALIZED;
     ComCfg::FrameContext contextCopy = context;
     contextCopy.set_apid(apid);
 
     // Extract secondary header flag
     bool hasSecHdr = (header.get_packetIdentification() & SpacePacketSubfields::SecHdrMask) != 0;
     contextCopy.set_hasSecHdr(hasSecHdr);
+
+    // Extract sequence flags
+    U8 sequenceFlags = static_cast<U8>((header.get_packetSequenceControl() & SpacePacketSubfields::SeqFlagsMask) >>
+                                       SpacePacketSubfields::SeqFlagsOffset);
+    contextCopy.set_sequenceFlags(sequenceFlags);
 
     // Validate with the ApidManager that the sequence count is correct
     U16 receivedSequenceCount = header.get_packetSequenceControl() & SpacePacketSubfields::SeqCountMask;

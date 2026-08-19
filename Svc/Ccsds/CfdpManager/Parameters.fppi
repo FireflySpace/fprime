@@ -10,6 +10,11 @@ param OutgoingFileChunkSize: U32 \
 param RxCrcCalcBytesPerCycle: U32 \
     default 65536
 
+@ Extra scheduler cycles a pending terminal send (EOF or FIN-ACK) is retried after the
+@ inactivity timer fires before the transaction is recycled regardless
+param PostInactivitySendRetries: U8 \
+    default 3
+
 @ Default CFDP channel for fileIn port-initiated file transfers
 param FileInDefaultChannel: U8 \
     default 0
@@ -34,10 +39,10 @@ param FileInDefaultPriority: U8 \
 param ChannelConfig: Cfdp.ChannelArrayParams \
     default [ \
         {
-            ack_limit = 4, \
-            nack_limit = 4, \
-            ack_timer = 3, \
-            inactivity_timer = 30, \
+            ack_limit = 10, \
+            nack_limit = 10, \
+            ack_timer = 2, \
+            inactivity_timer = 120, \
             dequeue_enabled = Fw.Enabled.ENABLED, \
             move_dir = "", \
             max_outgoing_pdus_per_cycle = 64, \
@@ -45,10 +50,10 @@ param ChannelConfig: Cfdp.ChannelArrayParams \
             fail_dir = "/fail" \
         }, \
         {
-            ack_limit = 4, \
-            nack_limit = 4, \
-            ack_timer = 3, \
-            inactivity_timer = 30, \
+            ack_limit = 10, \
+            nack_limit = 10, \
+            ack_timer = 2, \
+            inactivity_timer = 120, \
             dequeue_enabled = Fw.Enabled.ENABLED, \
             move_dir = "", \
             max_outgoing_pdus_per_cycle = 64, \

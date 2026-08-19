@@ -171,6 +171,9 @@ endmacro(fprime_initialize_build_system)
 # registered.
 ####
 function(fprime_setup_included_code)
+    # Clear the root directory's fprime-util metadata files
+    # child folder's are covered by add_fprime_subdirectory
+    fprime_util_metadata_clear("${CMAKE_BINARY_DIR}")
     # Must be done before code is registered but after custom target registration
     setup_global_targets()
     # For BUILD_TESTING builds then set up libraries that support testing

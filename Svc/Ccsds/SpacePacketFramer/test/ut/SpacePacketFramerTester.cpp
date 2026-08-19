@@ -6,6 +6,7 @@
 
 #include "SpacePacketFramerTester.hpp"
 #include "STest/Random/Random.hpp"
+#include "Svc/Ccsds/TestUtils/TestUtils.hpp"
 #include "Svc/Ccsds/Types/FppConstantsAc.hpp"
 
 namespace Svc {
@@ -60,12 +61,21 @@ void SpacePacketFramerTester::testNominalFraming() {
         payload[i] = static_cast<U8>(STest::Random::lowerUpper(0, 0xFF));
     }
     Fw::Buffer data(payload, sizeof(payload));
-    ComCfg::Apid::T apid = static_cast<ComCfg::Apid::T>(STest::Random::lowerUpper(0, 0x7FF));  // random 11 bit APID
-    U16 seqCount = static_cast<U8>(STest::Random::lowerUpper(0, 0x3FFF));  // random 14 bit sequence count
-    bool hasSecHdr = static_cast<bool>(STest::Random::lowerUpper(0, 1));   // random secondary header flag
+    const auto apidOption = CcsdsTestUtils::getRandomApid();
+    if (!apidOption.has_value()) {
+        GTEST_SKIP() << "Could not find a valid APID\n";
+    }
+    const auto apid = apidOption.value();
+    // Choose a random 14-bit sequence count
+    U16 seqCount = static_cast<U8>(STest::Random::lowerUpper(0, 0x3FFF));
+    // Choose a random secondary header flag
+    bool hasSecHdr = static_cast<bool>(STest::Random::lowerUpper(0, 1));
+    // Choose random 2-bit sequence flags
+    U8 seqFlags = static_cast<U8>(STest::Random::lowerUpper(0, 3));
     ComCfg::FrameContext context;
     context.set_apid(apid);
     context.set_hasSecHdr(hasSecHdr);
+    context.set_sequenceFlags(seqFlags);
     this->m_nextSeqCount = seqCount;  // seqCount to be returned by getApidSeqCount output port
 
     this->invoke_to_dataIn(0, data, context);
@@ -87,6 +97,11 @@ void SpacePacketFramerTester::testNominalFraming() {
     U16 extractedSecHdr = static_cast<U16>((header.get_packetIdentification() & SpacePacketSubfields::SecHdrMask) >>
                                            SpacePacketSubfields::SecHdrOffset);
     ASSERT_EQ(extractedSecHdr, hasSecHdr ? 1 : 0);
+
+    // Verify sequence flags in packetSequenceControl
+    U8 extractedSeqFlags = static_cast<U8>((header.get_packetSequenceControl() & SpacePacketSubfields::SeqFlagsMask) >>
+                                           SpacePacketSubfields::SeqFlagsOffset);
+    ASSERT_EQ(extractedSeqFlags, seqFlags);
 
     // Verify sequence count in packetSequenceControl
     U16 extractedSeqCount = header.get_packetSequenceControl() & SpacePacketSubfields::SeqCountMask;

@@ -27,7 +27,7 @@ ActivePhaser ::ActivePhaser(const char* const compName)
       m_last_start_ticks(0),
       m_last_cycle_ticks(0),
       m_cycle_count(0) {
-    ::memset(&m_state, 0, sizeof(m_state));  // Zero-out the whole configuration table
+    (void)::memset(&m_state, 0, sizeof(m_state));  // Zero-out the whole configuration table
 }
 
 void ActivePhaser ::init(const FwSizeType queueDepth, const FwIndexType instance) {
@@ -41,7 +41,7 @@ void ActivePhaser ::configure(U32 cycle_ticks) {
     m_cycle = cycle_ticks;
 }
 
-void ActivePhaser ::register_phased(FwIndexType port, U32 length, U32 start, U32 context) {
+void ActivePhaser ::register_phased(FwIndexType port, U32 length, U32 start, U32 userContext) {
     FW_ASSERT(m_cycle != 0);
     FW_ASSERT(m_state.used < 0xFFFF, static_cast<FwAssertArgType>(m_state.used));
     // Additional checks when there are previous entries
@@ -66,28 +66,26 @@ void ActivePhaser ::register_phased(FwIndexType port, U32 length, U32 start, U32
     FW_ASSERT(isConnected_PhaserMemberOut_OutputPort(port), static_cast<FwAssertArgType>(port));
     FW_ASSERT((start + length) <= m_cycle, static_cast<FwAssertArgType>(start), static_cast<FwAssertArgType>(length),
               static_cast<FwAssertArgType>(m_cycle));
-    FW_ASSERT(context > m_cycle, static_cast<FwAssertArgType>(context), static_cast<FwAssertArgType>(m_cycle));
+    FW_ASSERT(userContext > m_cycle, static_cast<FwAssertArgType>(userContext), static_cast<FwAssertArgType>(m_cycle));
 
     entry.port = port;
     entry.start = start;
     entry.length = length;
-    // By default, context is DONT_CARE, which means the context type is SEQUENTIAL
+    // By default, userContext is DONT_CARE, which means the context type is SEQUENTIAL
     // and a port's context value by default increments every time it is registered.
-    // If a value is given to context, the context type becomes COUNT, and
-    // entry.context represents the ratio between the user-configured context and the phaser cycle.
-    // The user-configured context must be greater than the phaser cycle.
-    // Example: If context == 2000 and m_cycle == 100, then entry.context == 20 while contextType == COUNT.
-    // FIXME: This is a point of confusion because entry.context and context are
-    // very different things, yet they have the same name.
-    entry.context = (context != DONT_CARE) ? context / m_cycle : getNextContext(port);
+    // If a value is given to userContext, the context type becomes COUNT, and
+    // entry.context represents the ratio between userContext and the phaser cycle.
+    // userContext must be greater than the phaser cycle.
+    // Example: If userContext == 2000 and m_cycle == 100, then entry.context == 20 while contextType == COUNT.
+    entry.context = (userContext != DONT_CARE) ? userContext / m_cycle : getNextContext(port);
     // Update some common multiple of all contexts
-    if (context != DONT_CARE) {
+    if (userContext != DONT_CARE) {
         // Check for overflow before multiply
         FW_ASSERT(std::numeric_limits<U32>::max() / m_ticks_rollover >= entry.context);
         m_ticks_rollover *= entry.context;
     }
 
-    entry.contextType = (context != DONT_CARE) ? PhaserContextType::COUNT : PhaserContextType::SEQUENTIAL;
+    entry.contextType = (userContext != DONT_CARE) ? PhaserContextType::COUNT : PhaserContextType::SEQUENTIAL;
     entry.started = false;
     m_state.used += 1;
 }
@@ -110,6 +108,8 @@ void ActivePhaser ::CycleIn_handler(FwIndexType portNum, Os::RawTime& cycleStart
 // ----------------------------------------------------------------------
 
 void ActivePhaser ::Tick_internalInterfaceHandler() {
+    FW_ASSERT(m_state.current <= m_state.used, static_cast<FwAssertArgType>(m_state.current),
+              static_cast<FwAssertArgType>(m_state.used));
     m_lock.lock();
     U32 full_ticks = m_ticks;
     m_lock.unLock();
@@ -118,6 +118,7 @@ void ActivePhaser ::Tick_internalInterfaceHandler() {
     if ((this->timeInCycle(full_ticks) >= m_cycle) && (m_state.current == m_state.used)) {
         m_last_cycle_ticks = full_ticks;
         // Increment cycle count modulo some common factor of all contexts
+        FW_ASSERT(m_ticks_rollover != 0);
         m_cycle_count = (m_cycle_count + 1) % m_ticks_rollover;
         m_state.current = 0;  // Back to processing the first task.
     }
@@ -163,10 +164,14 @@ void ActivePhaser ::startChild(U32 full_ticks) {
         return;
     }
     PhaserStateEntry& entry = m_state.entries[(m_state.current % m_state.used)];
-    // If context type is SEQUENTIAL, entry.context stores the number of times a port is called from the beginning of
-    // execution. If context type is COUNT, entry.context stores the number of phaser cycles elapsed within a
-    // user-specified time window.
-    U32 context = (entry.contextType == SEQUENTIAL) ? entry.context : m_cycle_count % entry.context;
+    // If context type is SEQUENTIAL, entry.context stores the registration index of this port among the entries
+    // registered to the same port, fixed at registration time. If context type is COUNT, entry.context stores the
+    // number of phaser cycles elapsed within a user-specified time window.
+    U32 context = entry.context;
+    if (entry.contextType != SEQUENTIAL) {
+        FW_ASSERT(entry.context != 0, static_cast<FwAssertArgType>(entry.port));
+        context = m_cycle_count % entry.context;
+    }
     entry.started = true;
     m_last_start_ticks = full_ticks;
     this->PhaserMemberOut_out(entry.port, context);

@@ -7,12 +7,13 @@
 #ifndef Svc_Ccsds_CfdpManagerTester_HPP
 #define Svc_Ccsds_CfdpManagerTester_HPP
 
+#include <Fw/Types/MallocAllocator.hpp>
 #include <Svc/Ccsds/CfdpManager/CfdpManager.hpp>
 #include <Svc/Ccsds/CfdpManager/CfdpManagerGTestBase.hpp>
-#include <Svc/Ccsds/CfdpManager/Types/Types.hpp>
-#include <Svc/Ccsds/CfdpManager/Types/PduBase.hpp>
-#include <Svc/Ccsds/CfdpManager/Engine.hpp>
 #include <Svc/Ccsds/CfdpManager/Channel.hpp>
+#include <Svc/Ccsds/CfdpManager/Engine.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/PduBase.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/Types.hpp>
 
 namespace Svc {
 namespace Ccsds {
@@ -25,7 +26,7 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     // ----------------------------------------------------------------------
 
     // Maximum size of histories storing events, telemetry, and port outputs
-    static const FwSizeType MAX_HISTORY_SIZE = 100;
+    static const FwSizeType MAX_HISTORY_SIZE = 500;
 
     // Instance ID supplied to the component instance under test
     static const FwEnumStoreType TEST_INSTANCE_ID = 0;
@@ -91,15 +92,13 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param sequenceId Transaction sequence number
     //! @param peerId Peer entity ID
     //! @return Pointer to configured transaction (owned by component)
-    Transaction* setupTestTransaction(
-        TxnState state,
-        U8 channelId,
-        const char* srcFilename,
-        const char* dstFilename,
-        U32 fileSize,
-        U32 sequenceId,
-        U32 peerId
-    );
+    Transaction* setupTestTransaction(TxnState state,
+                                      U8 channelId,
+                                      const char* srcFilename,
+                                      const char* dstFilename,
+                                      U32 fileSize,
+                                      U32 sequenceId,
+                                      U32 peerId);
 
     //! Helper to get PDU buffer from dataOut port history
     //! @param index History index (0 for most recent)
@@ -115,16 +114,14 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param expectedSourceFilename Expected source filename
     //! @param expectedDestFilename Expected destination filename
     //! @param expectedClass Expected CFDP class (CLASS_1 or CLASS_2)
-    void verifyMetadataPdu(
-        const Fw::Buffer& pduBuffer,
-        U32 expectedSourceEid,
-        U32 expectedDestEid,
-        U32 expectedTransactionSeq,
-        FileSize expectedFileSize,
-        const char* expectedSourceFilename,
-        const char* expectedDestFilename,
-        Svc::Ccsds::Cfdp::Class::T expectedClass
-    );
+    void verifyMetadataPdu(const Fw::Buffer& pduBuffer,
+                           U32 expectedSourceEid,
+                           U32 expectedDestEid,
+                           U32 expectedTransactionSeq,
+                           FileSize expectedFileSize,
+                           const char* expectedSourceFilename,
+                           const char* expectedDestFilename,
+                           Svc::Ccsds::Cfdp::Class::T expectedClass);
 
     //! Helper to verify File Data PDU (deserialize + validate)
     //! @param pduBuffer Buffer containing complete PDU bytes (header + body)
@@ -134,16 +131,14 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param expectedOffset Expected file offset
     //! @param expectedDataSize Expected data size
     //! @param filename Source file to read expected data from
-    void verifyFileDataPdu(
-        const Fw::Buffer& pduBuffer,
-        U32 expectedSourceEid,
-        U32 expectedDestEid,
-        U32 expectedTransactionSeq,
-        U32 expectedOffset,
-        U16 expectedDataSize,
-        const char* filename,
-        Svc::Ccsds::Cfdp::Class::T expectedClass
-    );
+    void verifyFileDataPdu(const Fw::Buffer& pduBuffer,
+                           U32 expectedSourceEid,
+                           U32 expectedDestEid,
+                           U32 expectedTransactionSeq,
+                           U32 expectedOffset,
+                           U16 expectedDataSize,
+                           const char* filename,
+                           Svc::Ccsds::Cfdp::Class::T expectedClass);
 
     //! Helper to verify EOF PDU (deserialize + validate)
     //! @param pduBuffer Buffer containing complete PDU bytes (header + body)
@@ -153,15 +148,13 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param expectedConditionCode Expected condition code
     //! @param expectedFileSize Expected file size
     //! @param sourceFilename Source file path to compute CRC for validation
-    void verifyEofPdu(
-        const Fw::Buffer& pduBuffer,
-        U32 expectedSourceEid,
-        U32 expectedDestEid,
-        U32 expectedTransactionSeq,
-        Cfdp::ConditionCode expectedConditionCode,
-        FileSize expectedFileSize,
-        const char* sourceFilename
-    );
+    void verifyEofPdu(const Fw::Buffer& pduBuffer,
+                      U32 expectedSourceEid,
+                      U32 expectedDestEid,
+                      U32 expectedTransactionSeq,
+                      Cfdp::ConditionCode expectedConditionCode,
+                      FileSize expectedFileSize,
+                      const char* sourceFilename);
 
     //! Helper to verify FIN PDU (deserialize + validate)
     //! @param pduBuffer Buffer containing complete PDU bytes (header + body)
@@ -171,15 +164,13 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param expectedConditionCode Expected condition code
     //! @param expectedDeliveryCode Expected delivery code
     //! @param expectedFileStatus Expected file status
-    void verifyFinPdu(
-        const Fw::Buffer& pduBuffer,
-        U32 expectedSourceEid,
-        U32 expectedDestEid,
-        U32 expectedTransactionSeq,
-        Cfdp::ConditionCode expectedConditionCode,
-        Cfdp::FinDeliveryCode expectedDeliveryCode,
-        Cfdp::FinFileStatus expectedFileStatus
-    );
+    void verifyFinPdu(const Fw::Buffer& pduBuffer,
+                      U32 expectedSourceEid,
+                      U32 expectedDestEid,
+                      U32 expectedTransactionSeq,
+                      Cfdp::ConditionCode expectedConditionCode,
+                      Cfdp::FinDeliveryCode expectedDeliveryCode,
+                      Cfdp::FinFileStatus expectedFileStatus);
 
     //! Helper to verify ACK PDU (deserialize + validate)
     //! @param pduBuffer Buffer containing complete PDU bytes (header + body)
@@ -190,16 +181,14 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param expectedDirectiveSubtypeCode Expected directive subtype code
     //! @param expectedConditionCode Expected condition code
     //! @param expectedTransactionStatus Expected transaction status
-    void verifyAckPdu(
-        const Fw::Buffer& pduBuffer,
-        U32 expectedSourceEid,
-        U32 expectedDestEid,
-        U32 expectedTransactionSeq,
-        Cfdp::FileDirective expectedDirectiveCode,
-        U8 expectedDirectiveSubtypeCode,
-        Cfdp::ConditionCode expectedConditionCode,
-        Cfdp::AckTxnStatus expectedTransactionStatus
-    );
+    void verifyAckPdu(const Fw::Buffer& pduBuffer,
+                      U32 expectedSourceEid,
+                      U32 expectedDestEid,
+                      U32 expectedTransactionSeq,
+                      Cfdp::FileDirective expectedDirectiveCode,
+                      U8 expectedDirectiveSubtypeCode,
+                      Cfdp::ConditionCode expectedConditionCode,
+                      Cfdp::AckTxnStatus expectedTransactionStatus);
 
     //! Helper to verify NAK PDU (deserialize + validate)
     //! @param pduBuffer Buffer containing complete PDU bytes (header + body)
@@ -210,22 +199,27 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param expectedScopeEnd Expected scope end offset
     //! @param expectedNumSegments Expected number of segment requests (0 = skip segment validation)
     //! @param expectedSegments Optional array of expected segment requests (only used if expectedNumSegments > 0)
-    void verifyNakPdu(
-        const Fw::Buffer& pduBuffer,
-        U32 expectedSourceEid,
-        U32 expectedDestEid,
-        U32 expectedTransactionSeq,
-        FileSize expectedScopeStart,
-        FileSize expectedScopeEnd,
-        U8 expectedNumSegments,
-        const Cfdp::SegmentRequest* expectedSegments
-    );
+    void verifyNakPdu(const Fw::Buffer& pduBuffer,
+                      U32 expectedSourceEid,
+                      U32 expectedDestEid,
+                      U32 expectedTransactionSeq,
+                      FileSize expectedScopeStart,
+                      FileSize expectedScopeEnd,
+                      U8 expectedNumSegments,
+                      const Cfdp::SegmentRequest* expectedSegments);
 
     //! Helper to find transaction by sequence number
     //! @param chanNum Channel number to search
     //! @param seqNum Transaction sequence number
     //! @return Pointer to transaction or nullptr if not found
     Transaction* findTransaction(U8 chanNum, TransactionSeq seqNum);
+
+    //! Helper to get pointer and size for PDU data (after packet descriptor)
+    //! @param buffer Buffer containing packet descriptor + PDU
+    //! @param pduData Output pointer to PDU data (after descriptor)
+    //! @param pduSize Output size of PDU data
+    //! @return true if successful, false if buffer too small
+    bool getPduData(const Fw::Buffer& buffer, const U8*& pduData, FwSizeType& pduSize);
 
     // ----------------------------------------------------------------------
     // PDU Uplink Helper Functions
@@ -241,17 +235,15 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param destFilename Destination filename
     //! @param class Transmission mode (Class 1 or Class 2)
     //! @param closureRequested Closure requested flag (typically 0 for Class 1, 1 for Class 2)
-    void sendMetadataPdu(
-        U8 channelId,
-        EntityId sourceEid,
-        EntityId destEid,
-        TransactionSeq transactionSeq,
-        FileSize fileSize,
-        const char* sourceFilename,
-        const char* destFilename,
-        Cfdp::Class::T txmMode,
-        U8 closureRequested
-    );
+    void sendMetadataPdu(U8 channelId,
+                         EntityId sourceEid,
+                         EntityId destEid,
+                         TransactionSeq transactionSeq,
+                         FileSize fileSize,
+                         const char* sourceFilename,
+                         const char* destFilename,
+                         Cfdp::Class::T txmMode,
+                         U8 closureRequested);
 
     //! Helper to send a File Data PDU to CfdpManager via dataIn
     //! @param channelId CFDP channel number
@@ -262,16 +254,14 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param dataSize Data size in octets
     //! @param data Pointer to file data
     //! @param class Transmission mode (Class 1 or Class 2)
-    void sendFileDataPdu(
-        U8 channelId,
-        EntityId sourceEid,
-        EntityId destEid,
-        TransactionSeq transactionSeq,
-        FileSize offset,
-        U16 dataSize,
-        const U8* data,
-        Cfdp::Class::T txmMode
-    );
+    void sendFileDataPdu(U8 channelId,
+                         EntityId sourceEid,
+                         EntityId destEid,
+                         TransactionSeq transactionSeq,
+                         FileSize offset,
+                         U16 dataSize,
+                         const U8* data,
+                         Cfdp::Class::T txmMode);
 
     //! Helper to send an EOF PDU to CfdpManager via dataIn
     //! @param channelId CFDP channel number
@@ -282,16 +272,14 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param checksum File checksum
     //! @param fileSize File size in octets
     //! @param class Transmission mode (Class 1 or Class 2)
-    void sendEofPdu(
-        U8 channelId,
-        EntityId sourceEid,
-        EntityId destEid,
-        TransactionSeq transactionSeq,
-        Cfdp::ConditionCode conditionCode,
-        U32 checksum,
-        FileSize fileSize,
-        Cfdp::Class::T txmMode
-    );
+    void sendEofPdu(U8 channelId,
+                    EntityId sourceEid,
+                    EntityId destEid,
+                    TransactionSeq transactionSeq,
+                    Cfdp::ConditionCode conditionCode,
+                    U32 checksum,
+                    FileSize fileSize,
+                    Cfdp::Class::T txmMode);
 
     //! Helper to send a FIN PDU to CfdpManager via dataIn
     //! @param channelId CFDP channel number
@@ -301,15 +289,13 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param conditionCode Condition code
     //! @param deliveryCode Delivery code
     //! @param fileStatus File status
-    void sendFinPdu(
-        U8 channelId,
-        EntityId sourceEid,
-        EntityId destEid,
-        TransactionSeq transactionSeq,
-        Cfdp::ConditionCode conditionCode,
-        Cfdp::FinDeliveryCode deliveryCode,
-        Cfdp::FinFileStatus fileStatus
-    );
+    void sendFinPdu(U8 channelId,
+                    EntityId sourceEid,
+                    EntityId destEid,
+                    TransactionSeq transactionSeq,
+                    Cfdp::ConditionCode conditionCode,
+                    Cfdp::FinDeliveryCode deliveryCode,
+                    Cfdp::FinFileStatus fileStatus);
 
     //! Helper to send an ACK PDU to CfdpManager via dataIn
     //! @param channelId CFDP channel number
@@ -320,16 +306,14 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param directiveSubtypeCode Directive subtype code
     //! @param conditionCode Condition code
     //! @param transactionStatus Transaction status
-    void sendAckPdu(
-        U8 channelId,
-        EntityId sourceEid,
-        EntityId destEid,
-        TransactionSeq transactionSeq,
-        Cfdp::FileDirective directiveCode,
-        U8 directiveSubtypeCode,
-        Cfdp::ConditionCode conditionCode,
-        Cfdp::AckTxnStatus transactionStatus
-    );
+    void sendAckPdu(U8 channelId,
+                    EntityId sourceEid,
+                    EntityId destEid,
+                    TransactionSeq transactionSeq,
+                    Cfdp::FileDirective directiveCode,
+                    U8 directiveSubtypeCode,
+                    Cfdp::ConditionCode conditionCode,
+                    Cfdp::AckTxnStatus transactionStatus);
 
     //! Helper to send a NAK PDU to CfdpManager via dataIn
     //! @param channelId CFDP channel number
@@ -340,16 +324,14 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param scopeEnd Scope end offset
     //! @param numSegments Number of segment requests (0 to CF_NAK_MAX_SEGMENTS)
     //! @param segments Array of segment requests (can be nullptr if numSegments is 0)
-    void sendNakPdu(
-        U8 channelId,
-        EntityId sourceEid,
-        EntityId destEid,
-        TransactionSeq transactionSeq,
-        FileSize scopeStart,
-        FileSize scopeEnd,
-        U8 numSegments,
-        const Cfdp::SegmentRequest* segments
-    );
+    void sendNakPdu(U8 channelId,
+                    EntityId sourceEid,
+                    EntityId destEid,
+                    TransactionSeq transactionSeq,
+                    FileSize scopeStart,
+                    FileSize scopeEnd,
+                    U8 numSegments,
+                    const Cfdp::SegmentRequest* segments);
 
   public:
     // ----------------------------------------------------------------------
@@ -364,6 +346,9 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
 
     //! Test Class 2 TX file transfer with NAK handling
     void testClass2TxNack();
+
+    //! Test stateless FIN-ACK for a retransmitted FIN on an already-recycled TX transaction
+    void testClass2TxLateFinAck();
 
     //! Test nominal Class 1 RX file transfer
     void testClass1RxNominal();
@@ -385,6 +370,271 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
 
   public:
     // ----------------------------------------------------------------------
+    // Command Tests
+    // ----------------------------------------------------------------------
+
+    //! Test SendFile command with zero-length file (fix verification)
+    void testSendFileZeroLength();
+
+    //! Test SendFile command with nonexistent file
+    void testSendFileNonExistent();
+
+    //! Test StopPollDirectory command on inactive directory
+    void testStopPollDirNotActive();
+
+    //! Test StopPollDirectory command on active directory (fix verification)
+    void testStopPollDirActive();
+
+    //! Test SendFile command with invalid channel ID
+    void testSendFileInvalidChannel();
+
+    //! Test PlaybackDirectory command with valid directory
+    void testPlaybackDirectoryNominal();
+
+    //! Test PlaybackDirectory command with invalid channel
+    void testPlaybackDirectoryInvalidChannel();
+
+    //! Test PlaybackDirectory command with nonexistent directory
+    void testPlaybackDirectoryOpenFailed();
+
+    //! Test PollDirectory command with valid directory
+    void testPollDirectoryNominal();
+
+    //! Test PollDirectory command with invalid channel
+    void testPollDirectoryInvalidChannel();
+
+    //! Test PollDirectory command when poll slot is busy
+    void testPollDirectoryBusy();
+
+    //! Test SetChannelFlow command with valid channel
+    void testSetChannelFlowNominal();
+
+    //! Test SetChannelFlow command with invalid channel
+    void testSetChannelFlowInvalidChannel();
+
+    //! Test SuspendResumeTransaction command - suspend and resume
+    void testSuspendResumeTransactionNominal();
+
+    //! Test SuspendResumeTransaction command with invalid channel
+    void testSuspendResumeTransactionInvalidChannel();
+
+    //! Test SuspendResumeTransaction command with nonexistent transaction
+    void testSuspendResumeTransactionNotFound();
+
+    //! Test CancelTransaction command
+    void testCancelTransactionNominal();
+
+    //! Test CancelTransaction command with invalid channel
+    void testCancelTransactionInvalidChannel();
+
+    //! Test AbandonTransaction command
+    void testAbandonTransactionNominal();
+
+    //! Test AbandonTransaction command with invalid channel
+    void testAbandonTransactionInvalidChannel();
+
+    //! Test ResetCounters command for single channel
+    void testResetCountersSingleChannel();
+
+    //! Test ResetCounters command for all channels
+    void testResetCountersAllChannels();
+
+  public:
+    // ----------------------------------------------------------------------
+    // Parameter Tests
+    // ----------------------------------------------------------------------
+
+    //! Test LocalEid parameter set/get
+    void testParamLocalEidSetGet();
+
+    //! Test LocalEid parameter default value
+    void testParamLocalEidDefault();
+
+    //! Test OutgoingFileChunkSize parameter set/get
+    void testParamOutgoingFileChunkSizeSetGet();
+
+    //! Test OutgoingFileChunkSize parameter default value
+    void testParamOutgoingFileChunkSizeDefault();
+
+    //! Test RxCrcCalcBytesPerCycle parameter set/get
+    void testParamRxCrcCalcBytesPerCycleSetGet();
+
+    //! Test RxCrcCalcBytesPerCycle parameter default value
+    void testParamRxCrcCalcBytesPerCycleDefault();
+
+    //! Test FileInDefaultChannel parameter set/get
+    void testParamFileInDefaultChannelSetGet();
+
+    //! Test FileInDefaultChannel parameter default value
+    void testParamFileInDefaultChannelDefault();
+
+    //! Test FileInDefaultDestEntityId parameter set/get
+    void testParamFileInDefaultDestEntityIdSetGet();
+
+    //! Test FileInDefaultDestEntityId parameter default value
+    void testParamFileInDefaultDestEntityIdDefault();
+
+    //! Test FileInDefaultClass parameter set/get
+    void testParamFileInDefaultClassSetGet();
+
+    //! Test FileInDefaultClass parameter default value
+    void testParamFileInDefaultClassDefault();
+
+    //! Test FileInDefaultKeep parameter set/get
+    void testParamFileInDefaultKeepSetGet();
+
+    //! Test FileInDefaultKeep parameter default value
+    void testParamFileInDefaultKeepDefault();
+
+    //! Test FileInDefaultPriority parameter set/get
+    void testParamFileInDefaultPrioritySetGet();
+
+    //! Test FileInDefaultPriority parameter default value
+    void testParamFileInDefaultPriorityDefault();
+
+  public:
+    // ----------------------------------------------------------------------
+    // Port Tests
+    // ----------------------------------------------------------------------
+
+    //! Test dataReturnIn port on channel 0
+    void testDataReturnInChannel0();
+
+    //! Test dataReturnIn port on channel 1
+    void testDataReturnInChannel1();
+
+    //! Test Class 1 RX transaction on channel 1
+    void testClass1RxNominalChannel1();
+
+    //! Test Class 2 RX transaction on channel 1
+    void testClass2RxNominalChannel1();
+
+  public:
+    // ----------------------------------------------------------------------
+    // Event Coverage Tests
+    // ----------------------------------------------------------------------
+
+    // Transaction Activity Events
+    void testTxFileQueuedEvent();
+    void testTxFileTransferStartedEvent();
+    void testMetadataReceivedEvent();
+
+    // Buffer Management Events
+    void testBuffersExhaustedEvent();
+    void testChunklistUnavailableEvent();
+
+    // PDU Deserialization Failure Events
+    void testFailPduHeaderDeserializationEvent();
+    void testFailMetadataPduDeserializationEvent();
+    void testFailFileDataPduDeserializationEvent();
+    void testFailEofPduDeserializationEvent();
+    void testFailAckPduDeserializationEvent();
+    void testFailFinPduDeserializationEvent();
+    void testFailNakPduDeserializationEvent();
+
+    // PDU Processing and Serialization Failure Events
+    void testFailKeepFileMoveEvent();
+    void testFailPduSerializationEvent();
+    void testFailPollFileMoveEvent();
+    void testFileDataSegmentMetadataEvent();
+
+    // RX Error Events
+    void testRxFileCreateFailedEvent();
+    void testRxCrcMismatchEvent();
+    void testRxFileSizeMismatchEvent();
+    void testRxFileDataOutOfBoundsEvent();
+    void testRxEofCancelReceivedEvent();
+    void testRxEofWithErrorEvent();
+    void testRxEofMdSizeMismatchEvent();
+    void testRxTransactionLimitReachedEvent();
+    void testRxInvalidDirectiveCodeEvent();
+    void testRxInactivityTimeoutEvent();
+    void testRxAckLimitReachedEvent();
+    void testRxNakLimitReachedEvent();
+    void testInvalidDestinationEidEvent();
+    void testUnhandledPduInIdleStateEvent();
+
+    // TX Error Events
+    void testTxInvalidDirectiveCodeEvent();
+    void testTxEarlyFinReceivedEvent();
+    void testTxNonFileDirectivePduReceivedEvent();
+    void testTxInvalidNakPduEvent();
+    void testTxInvalidSegmentRequestsEvent();
+    void testTxInactivityTimeoutEvent();
+    void testTxAckLimitReachedEvent();
+    void testMaxTxTransactionsReachedEvent();
+
+    // File Management Events
+    void testFileRemoveFailedEvent();
+    void testPlaybackDirOpenFailedEvent();
+    void testPlaybackDirReadFailedEvent();
+    void testPlaybackDirSlotUnavailableEvent();
+
+    // Critical Error Path Events
+    void testRxWriteFailedEvent();
+    void testRxSeekFailedEvent();
+    void testRxFileRenameFailedEvent();
+    void testRxFileReopenFailedEvent();
+    void testTxFileSeekFailedEvent();
+    void testTxSendMetadataFailedEvent();
+
+    // Informational/Diagnostic Events
+    void testRxTempFileCreatedEvent();
+    void testDanglingFileHandleClosedEvent();
+    void testResetFreedTransactionEvent();
+
+    // RX CRC and Validation Events
+    void testRxSeekCrcFailedEvent();
+    void testRxReadCrcFailedEvent();
+
+    // Port and Command Input Validation
+    void testUnsupportedSendFileArgumentsEvent();
+    void testSendFileInitiateFailEvent();
+    void testInvalidChannelPollEvent();
+
+  public:
+    // ----------------------------------------------------------------------
+    // Coverage Tests
+    //
+    // Target trivial paths in CfdpManager.cpp/.hpp and transaction-dependent
+    // Utils.cpp helpers that are not otherwise exercised.
+    // ----------------------------------------------------------------------
+
+    //! dataIn_handler: buffer smaller than the 2-byte packet descriptor
+    void testDataInBufferTooSmall();
+
+    //! dataIn_handler: packet descriptor is not FW_PACKET_FILE
+    void testDataInWrongDescriptor();
+
+    //! getPduBuffer: max outgoing PDUs per cycle reached
+    void testGetPduBufferMaxOutgoing();
+
+    //! CancelTransaction command on a nonexistent transaction
+    void testCancelTransactionNotFound();
+
+    //! AbandonTransaction command on a nonexistent transaction
+    void testAbandonTransactionNotFound();
+
+    //! ResetCounters command with an invalid (non-0xFF, out-of-range) channel
+    void testResetCountersInvalidChannel();
+
+    //! Telemetry helper: incrementRecvDropped
+    void testIncrementRecvDropped();
+
+    //! Telemetry helper: incrementSentEofCanceled
+    void testIncrementSentEofCanceled();
+
+    //! GetTxnStatus over the transaction-state branches
+    void testGetTxnStatusStates();
+
+    //! Transaction::findBySequenceNumberCallback match and non-match
+    void testFindBySequenceNumberCallback();
+
+    //! Transaction::prioritySearchCallback match and non-match
+    void testPrioritySearchCallback();
+
+  public:
+    // ----------------------------------------------------------------------
     // Miscellaneous Tests
     // ----------------------------------------------------------------------
 
@@ -397,22 +647,13 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     // ----------------------------------------------------------------------
 
     //! Handler for from_bufferAllocate - allocates test buffers
-    Fw::Buffer from_bufferAllocate_handler(
-        FwIndexType portNum,
-        FwSizeType size
-    ) override;
+    Fw::Buffer from_bufferAllocate_handler(FwIndexType portNum, FwSizeType size) override;
 
     //! Handler for from_dataOut - copies PDU data to avoid buffer reuse issues
-    void from_dataOut_handler(
-        FwIndexType portNum,
-        Fw::Buffer& fwBuffer
-    ) override;
+    void from_dataOut_handler(FwIndexType portNum, Fw::Buffer& fwBuffer) override;
 
     //! Handler for from_fileDoneOut - just push port history for testing
-    void from_fileDoneOut_handler(
-        FwIndexType portNum,
-        const Svc::SendFileResponse& response
-    ) override;
+    void from_fileDoneOut_handler(FwIndexType portNum, const Svc::SendFileResponse& response) override;
 
   private:
     // ----------------------------------------------------------------------
@@ -432,75 +673,53 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     };
 
     //! Create test file and verify size matches expected
-    void createAndVerifyTestFile(
-        const char* filePath,
-        FwSizeType expectedFileSize,
-        FwSizeType& actualFileSize
-    );
+    void createAndVerifyTestFile(const char* filePath, FwSizeType expectedFileSize, FwSizeType& actualFileSize);
 
     //! Setup TX transaction and verify initial state (command-based)
-    void setupTxTransaction(
-        const char* srcFile,
-        const char* dstFile,
-        U8 channelId,
-        EntityId destEid,
-        Cfdp::Class cfdpClass,
-        U8 priority,
-        TxnState expectedState,
-        TransactionSetup& setup
-    );
+    void setupTxTransaction(const char* srcFile,
+                            const char* dstFile,
+                            U8 channelId,
+                            EntityId destEid,
+                            Cfdp::Class cfdpClass,
+                            U8 priority,
+                            TxnState expectedState,
+                            TransactionSetup& setup);
 
     //! Setup TX transaction and verify initial state (port-based)
-    void setupTxPortTransaction(
-        const char* srcFile,
-        const char* dstFile,
-        U8 channelId,
-        TxnState expectedState,
-        TransactionSetup& setup
-    );
+    void setupTxPortTransaction(const char* srcFile,
+                                const char* dstFile,
+                                U8 channelId,
+                                TxnState expectedState,
+                                TransactionSetup& setup);
 
     //! Setup RX transaction via Metadata PDU and verify initial state
-    void setupRxTransaction(
-        const char* srcFile,
-        const char* dstFile,
-        U8 channelId,
-        EntityId sourceEid,
-        Cfdp::Class::T cfdpClass,
-        U32 fileSize,
-        U32 transactionSeq,
-        TxnState expectedState,
-        TransactionSetup& setup
-    );
+    void setupRxTransaction(const char* srcFile,
+                            const char* dstFile,
+                            U8 channelId,
+                            EntityId sourceEid,
+                            Cfdp::Class::T cfdpClass,
+                            U32 fileSize,
+                            U32 transactionSeq,
+                            TxnState expectedState,
+                            TransactionSetup& setup);
 
     //! Wait for transaction to be recycled by inactivity timer
     void waitForTransactionRecycle(U8 channelId, U32 expectedSeqNum);
 
     //! Complete Class 2 transaction handshake (EOF-ACK, FIN, FIN-ACK)
-    void completeClass2Handshake(
-        U8 channelId,
-        EntityId destEid,
-        U32 expectedSeqNum,
-        Transaction* txn
-    );
+    void completeClass2Handshake(U8 channelId, EntityId destEid, U32 expectedSeqNum, Transaction* txn);
 
     //! Initiate a file transfer via SendFile port
     //! @param srcFile Source file path
     //! @param dstFile Destination file path
     //! @return SendFileResponse from port
-    Svc::SendFileResponse invokeSendFilePort(
-        const char* srcFile,
-        const char* dstFile
-    );
+    Svc::SendFileResponse invokeSendFilePort(const char* srcFile, const char* dstFile);
 
     //! Send and verify a Class 1 TX transaction (command-based only)
     //! @param srcFile Source file path
     //! @param dstFile Destination file path
     //! @param expectedFileSize Expected size of file to transfer
-    void sendAndVerifyClass1Tx(
-        const char* srcFile,
-        const char* dstFile,
-        FwSizeType expectedFileSize
-    );
+    void sendAndVerifyClass1Tx(const char* srcFile, const char* dstFile, FwSizeType expectedFileSize);
 
     //! Send and verify a Class 2 TX transaction
     //! @param initType How to initiate the transaction (command or port)
@@ -508,25 +727,24 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param dstFile Destination file path
     //! @param expectedFileSize Expected size of file to transfer
     //! @param simulateNak If true, simulate NAK response (optional, default false)
-    void sendAndVerifyClass2Tx(
-        TransactionInitType initType,
-        const char* srcFile,
-        const char* dstFile,
-        FwSizeType expectedFileSize,
-        bool simulateNak = false
-    );
+    void sendAndVerifyClass2Tx(TransactionInitType initType,
+                               const char* srcFile,
+                               const char* dstFile,
+                               FwSizeType expectedFileSize,
+                               bool simulateNak = false,
+                               bool expectExactCounts = false);
 
     //! Receive and verify a Class 1 RX transaction
     //! @param srcFile Local file to read test data from
     //! @param dstFile Destination file path where received file will be written
     //! @param groundSrcFile Source filename from ground perspective
     //! @param expectedFileSize Expected size of file to receive
-    void sendAndVerifyClass1Rx(
-        const char* srcFile,
-        const char* dstFile,
-        const char* groundSrcFile,
-        FwSizeType expectedFileSize
-    );
+    //! @param channelId CFDP channel to run the transfer on (default channel 0)
+    void sendAndVerifyClass1Rx(const char* srcFile,
+                               const char* dstFile,
+                               const char* groundSrcFile,
+                               FwSizeType expectedFileSize,
+                               U8 channelId = TEST_CHANNEL_ID_0);
 
     //! Receive and verify a Class 2 RX transaction
     //! @param srcFile Local file to read test data from
@@ -534,51 +752,43 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! @param groundSrcFile Source filename from ground perspective
     //! @param expectedFileSize Expected size of file to receive
     //! @param simulateNak If true, simulate missing FileData to trigger NAK (optional, default false)
-    void sendAndVerifyClass2Rx(
-        const char* srcFile,
-        const char* dstFile,
-        const char* groundSrcFile,
-        FwSizeType expectedFileSize,
-        bool simulateNak = false
-    );
+    //! @param expectExactCounts If true, assert exact counter values (single-transaction no-NAK only)
+    //! @param channelId CFDP channel to run the transfer on (default channel 0)
+    void sendAndVerifyClass2Rx(const char* srcFile,
+                               const char* dstFile,
+                               const char* groundSrcFile,
+                               FwSizeType expectedFileSize,
+                               bool simulateNak = false,
+                               bool expectExactCounts = false,
+                               U8 channelId = TEST_CHANNEL_ID_0);
 
     //! Verify FIN-ACK PDU at given index
-    void verifyFinAckPdu(
-        FwIndexType pduIndex,
-        EntityId sourceEid,
-        EntityId destEid,
-        U32 expectedSeqNum
-    );
+    void verifyFinAckPdu(FwIndexType pduIndex, EntityId sourceEid, EntityId destEid, U32 expectedSeqNum);
 
     //! Verify Metadata PDU at specific index in port history
-    void verifyMetadataPduAtIndex(
-        FwIndexType pduIndex,
-        const TransactionSetup& setup,
-        FwSizeType fileSize,
-        const char* srcFile,
-        const char* dstFile,
-        Cfdp::Class::T cfdpClass
-    );
+    void verifyMetadataPduAtIndex(FwIndexType pduIndex,
+                                  const TransactionSetup& setup,
+                                  FwSizeType fileSize,
+                                  const char* srcFile,
+                                  const char* dstFile,
+                                  Cfdp::Class::T cfdpClass);
 
     //! Verify multiple FileData PDUs in sequence
-    void verifyMultipleFileDataPdus(
-        FwIndexType startIndex,
-        U8 numPdus,
-        const TransactionSetup& setup,
-        U16 dataPerPdu,
-        const char* srcFile,
-        Cfdp::Class::T cfdpClass
-    );
+    void verifyMultipleFileDataPdus(FwIndexType startIndex,
+                                    U8 numPdus,
+                                    const TransactionSetup& setup,
+                                    U16 dataPerPdu,
+                                    const char* srcFile,
+                                    Cfdp::Class::T cfdpClass);
 
     //! Clean up test file (remove and verify)
     void cleanupTestFile(const char* filePath);
 
     //! Verify received file matches expected data
-    void verifyReceivedFile(
-        const char* filePath,
-        const U8* expectedData,
-        FwSizeType expectedSize
-    );
+    void verifyReceivedFile(const char* filePath, const U8* expectedData, FwSizeType expectedSize);
+
+    //! Set buffer allocation failure flag for testing
+    void setFailBufferAllocation(bool fail);
 
   private:
     // ----------------------------------------------------------------------
@@ -588,6 +798,9 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     //! The component under test
     CfdpManager component;
 
+    //! Memory allocator for component
+    Fw::MallocAllocator m_allocator;
+
     //! Reusable buffer for allocation handler
     U8 m_internalDataBuffer[MaxPduSize];
 
@@ -595,6 +808,9 @@ class CfdpManagerTester final : public CfdpManagerGTestBase {
     static constexpr FwSizeType MAX_PDU_COPIES = 100;
     U8 m_pduCopyStorage[MAX_PDU_COPIES][MaxPduSize];
     FwSizeType m_pduCopyCount;
+
+    //! Flag to simulate buffer allocation failure for testing
+    bool m_failBufferAllocation;
 };
 
 }  // namespace Cfdp

@@ -4,8 +4,8 @@
 // \brief  cpp file for CFDP File Data PDU
 // ======================================================================
 
-#include <Svc/Ccsds/CfdpManager/Types/FileDataPdu.hpp>
 #include <Fw/Types/Assert.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/FileDataPdu.hpp>
 #include <config/CfdpCfg.hpp>
 
 namespace Svc {
@@ -13,13 +13,13 @@ namespace Ccsds {
 namespace Cfdp {
 
 void FileDataPdu::initialize(PduDirection direction,
-                                   Cfdp::Class::T txmMode,
-                                   EntityId sourceEid,
-                                   TransactionSeq transactionSeq,
-                                   EntityId destEid,
-                                   FileSize offset,
-                                   U16 dataSize,
-                                   const U8* data) {
+                             Cfdp::Class::T txmMode,
+                             EntityId sourceEid,
+                             TransactionSeq transactionSeq,
+                             EntityId destEid,
+                             FileSize offset,
+                             U16 dataSize,
+                             const U8* data) {
     // Initialize header with PduTypeEnum::FILE_DATA type
     this->m_header.initialize(PduTypeEnum::FILE_DATA, direction, txmMode, sourceEid, transactionSeq, destEid);
 
@@ -32,10 +32,10 @@ U32 FileDataPdu::getBufferSize() const {
     U32 size = this->m_header.getBufferSize();
 
     // Offset field size depends on large file flag
-    if (this->m_header.m_largeFileFlag == LARGE_FILE_64_BIT) {
-        size += sizeof(U64);  // 8-byte offset
+    if (this->m_header.m_largeFileFlag == LargeFileFlag::LARGE_FILE_64_BIT) {
+        size += static_cast<U32>(sizeof(U64));  // 8-byte offset
     } else {
-        size += sizeof(U32);  // 4-byte offset
+        size += static_cast<U32>(sizeof(U32));  // 4-byte offset
     }
 
     size += this->m_dataSize;  // actual data
@@ -46,10 +46,10 @@ U32 FileDataPdu::getMaxFileDataSize() {
     U32 size = this->m_header.getBufferSize();
 
     // Offset field size depends on large file flag
-    if (this->m_header.m_largeFileFlag == LARGE_FILE_64_BIT) {
-        size += sizeof(U64);  // 8-byte offset
+    if (this->m_header.m_largeFileFlag == LargeFileFlag::LARGE_FILE_64_BIT) {
+        size += static_cast<U32>(sizeof(U64));  // 8-byte offset
     } else {
-        size += sizeof(U32);  // 4-byte offset
+        size += static_cast<U32>(sizeof(U32));  // 4-byte offset
     }
 
     return MaxPduSize - size;
@@ -66,8 +66,7 @@ Fw::SerializeStatus FileDataPdu::toBuffer(Fw::Buffer& buffer) const {
 
 Fw::SerializeStatus FileDataPdu::fromBuffer(const Fw::Buffer& buffer) {
     // Create SerialBuffer from Buffer
-    Fw::SerialBuffer serialBuffer(const_cast<Fw::Buffer&>(buffer).getData(),
-                                  const_cast<Fw::Buffer&>(buffer).getSize());
+    Fw::SerialBuffer serialBuffer(const_cast<Fw::Buffer&>(buffer).getData(), const_cast<Fw::Buffer&>(buffer).getSize());
     serialBuffer.fill();
 
     // Deserialize header first
@@ -77,7 +76,7 @@ Fw::SerializeStatus FileDataPdu::fromBuffer(const Fw::Buffer& buffer) {
     }
 
     // Validate this is a file data PDU
-    if (this->m_header.m_pduType != PDU_TYPE_FILE_DATA) {
+    if (this->m_header.m_pduType != PduType::PDU_TYPE_FILE_DATA) {
         return Fw::FW_DESERIALIZE_TYPE_MISMATCH;
     }
 
@@ -105,7 +104,7 @@ Fw::SerializeStatus FileDataPdu::toSerialBuffer(Fw::SerialBuffer& serialBuffer) 
     }
 
     // Serialize offset - size depends on large file flag
-    if (this->m_header.m_largeFileFlag == LARGE_FILE_64_BIT) {
+    if (this->m_header.m_largeFileFlag == LargeFileFlag::LARGE_FILE_64_BIT) {
         // Serialize as 8 bytes (64-bit)
         U64 offset64 = this->m_offset;
         status = serialBuffer.serializeFrom(offset64);
@@ -140,6 +139,12 @@ Fw::SerializeStatus FileDataPdu::fromSerialBuffer(Fw::SerialBuffer& serialBuffer
 
     // Calculate remaining data size based on header's PDU data length
     U16 pduDataLength = this->m_header.getPduDataLength();
+
+    // Defensive check: prevent unsigned integer underflow
+    if (pduDataLength < offsetSize) {
+        return Fw::FW_DESERIALIZE_SIZE_MISMATCH;
+    }
+
     this->m_dataSize = static_cast<U16>(pduDataLength - offsetSize);  // minus offset size
 
     // Point to the data in the buffer (zero-copy)
@@ -162,23 +167,15 @@ Fw::SerializeStatus FileDataPdu::fromSerialBuffer(Fw::SerialBuffer& serialBuffer
     return Fw::FW_SERIALIZE_OK;
 }
 
-Fw::SerializeStatus FileDataPdu::serializeTo(Fw::SerialBufferBase& buffer,
-                                               Fw::Endianness mode) const {
-    // Cast to SerialBuffer and delegate to toSerialBuffer
-    Fw::SerialBuffer* serialBuffer = dynamic_cast<Fw::SerialBuffer*>(&buffer);
-    if (serialBuffer == nullptr) {
-        return Fw::FW_SERIALIZE_FORMAT_ERROR;
-    }
+Fw::SerializeStatus FileDataPdu::serializeTo(Fw::SerialBufferBase& buffer, Fw::Endianness mode) const {
+    // Caller contract guarantees a SerialBuffer.
+    Fw::SerialBuffer* serialBuffer = static_cast<Fw::SerialBuffer*>(&buffer);
     return this->toSerialBuffer(*serialBuffer);
 }
 
-Fw::SerializeStatus FileDataPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
-                                                   Fw::Endianness mode) {
-    // Cast to SerialBuffer and delegate to fromSerialBuffer
-    Fw::SerialBuffer* serialBuffer = dynamic_cast<Fw::SerialBuffer*>(&buffer);
-    if (serialBuffer == nullptr) {
-        return Fw::FW_DESERIALIZE_FORMAT_ERROR;
-    }
+Fw::SerializeStatus FileDataPdu::deserializeFrom(Fw::SerialBufferBase& buffer, Fw::Endianness mode) {
+    // Caller contract guarantees a SerialBuffer.
+    Fw::SerialBuffer* serialBuffer = static_cast<Fw::SerialBuffer*>(&buffer);
 
     // Deserialize header first
     Fw::SerializeStatus status = this->m_header.fromSerialBuffer(*serialBuffer);

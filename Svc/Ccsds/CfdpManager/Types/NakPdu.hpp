@@ -32,7 +32,7 @@ class NakPdu : public PduBase {
     //! Number of segment requests
     U8 m_numSegments;
 
-    //! Segment requests array (max CFDP_NAK_MAX_SEGMENTS = 58)
+    //! Segment requests array (max NakMaxSegments = 58)
     SegmentRequest m_segments[58];
 
   public:
@@ -41,12 +41,12 @@ class NakPdu : public PduBase {
 
     //! Initialize a NAK PDU
     void initialize(PduDirection direction,
-                   Cfdp::Class::T txmMode,
-                   EntityId sourceEid,
-                   TransactionSeq transactionSeq,
-                   EntityId destEid,
-                   FileSize scopeStart,
-                   FileSize scopeEnd);
+                    Cfdp::Class::T txmMode,
+                    EntityId sourceEid,
+                    TransactionSeq transactionSeq,
+                    EntityId destEid,
+                    FileSize scopeStart,
+                    FileSize scopeEnd);
 
     //! Compute the buffer size needed
     U32 getBufferSize() const override;
@@ -82,7 +82,7 @@ class NakPdu : public PduBase {
     void clearSegments();
 
     //! Get directive code
-    FileDirective getDirectiveCode() const { return FILE_DIRECTIVE_NAK; }
+    FileDirective getDirectiveCode() const { return FileDirective::FILE_DIRECTIVE_NAK; }
 
   private:
     //! Initialize this NakPdu from a SerialBuffer

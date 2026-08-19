@@ -7,42 +7,41 @@
 #ifndef Svc_Ccsds_Cfdp_PduHeader_HPP
 #define Svc_Ccsds_Cfdp_PduHeader_HPP
 
+#include <Fw/Buffer/Buffer.hpp>
 #include <Fw/FPrimeBasicTypes.hpp>
 #include <Fw/Types/Serializable.hpp>
-#include <Fw/Buffer/Buffer.hpp>
-#include <config/EntityIdAliasAc.hpp>
-#include <config/TransactionSeqAliasAc.hpp>
 #include <Svc/Ccsds/CfdpManager/Types/ClassEnumAc.hpp>
 #include <Svc/Ccsds/CfdpManager/Types/PduTypeEnumEnumAc.hpp>
+#include <config/EntityIdAliasAc.hpp>
+#include <config/TransactionSeqAliasAc.hpp>
 
 namespace Svc {
 namespace Ccsds {
 namespace Cfdp {
 
 // CFDP PDU Type
-enum PduType : U8 {
+enum class PduType : U8 {
     PDU_TYPE_DIRECTIVE = 0,  // File directive PDU
     PDU_TYPE_FILE_DATA = 1   // File data PDU
 };
 
 // CFDP PduDirection
-enum PduDirection : U8 {
+enum class PduDirection : U8 {
     DIRECTION_TOWARD_RECEIVER = 0,  // Toward file receiver
     DIRECTION_TOWARD_SENDER = 1     // Toward file sender
 };
 
 // CFDP CRC Flag
-enum CrcFlag : U8 {
+enum class CrcFlag : U8 {
     CRC_NOT_PRESENT = 0,  // CRC not present
     CRC_PRESENT = 1       // CRC present
 };
 
 // CFDP Large File Flag
-enum LargeFileFlag : U8 {
+enum class LargeFileFlag : U8 {
     LARGE_FILE_32_BIT = 0,  // 32-bit file size
     LARGE_FILE_64_BIT = 1   // 64-bit file size
 };
-
 
 //! The type of a PDU header (common to all PDUs)
 class PduHeader {
@@ -88,15 +87,15 @@ class PduHeader {
 
   public:
     //! Header size (variable due to EID/TSN lengths)
-    enum { MIN_HEADERSIZE = 7 }; // Minimum fixed portion
+    enum { MIN_HEADERSIZE = 7 };  // Minimum fixed portion
 
     //! Initialize a PDU header
     void initialize(PduTypeEnum::T type,
-                   PduDirection direction,
-                   Cfdp::Class::T txmMode,
-                   EntityId sourceEid,
-                   TransactionSeq transactionSeq,
-                   EntityId destEid);
+                    PduDirection direction,
+                    Cfdp::Class::T txmMode,
+                    EntityId sourceEid,
+                    TransactionSeq transactionSeq,
+                    EntityId destEid);
 
     //! Compute the buffer size needed to hold this Header
     U32 getBufferSize() const;

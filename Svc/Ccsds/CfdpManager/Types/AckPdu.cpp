@@ -4,22 +4,22 @@
 // \brief  cpp file for CFDP ACK (Acknowledge) PDU
 // ======================================================================
 
-#include <Svc/Ccsds/CfdpManager/Types/AckPdu.hpp>
 #include <Fw/Types/Assert.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/AckPdu.hpp>
 
 namespace Svc {
 namespace Ccsds {
 namespace Cfdp {
 
 void AckPdu::initialize(PduDirection direction,
-                              Cfdp::Class::T txmMode,
-                              EntityId sourceEid,
-                              TransactionSeq transactionSeq,
-                              EntityId destEid,
-                              FileDirective directiveCode,
-                              U8 directiveSubtypeCode,
-                              ConditionCode conditionCode,
-                              AckTxnStatus transactionStatus) {
+                        Cfdp::Class::T txmMode,
+                        EntityId sourceEid,
+                        TransactionSeq transactionSeq,
+                        EntityId destEid,
+                        FileDirective directiveCode,
+                        U8 directiveSubtypeCode,
+                        ConditionCode conditionCode,
+                        AckTxnStatus transactionStatus) {
     // Initialize header with PduTypeEnum::ACKNOWLEDGMENT type
     this->m_header.initialize(PduTypeEnum::ACKNOWLEDGMENT, direction, txmMode, sourceEid, transactionSeq, destEid);
 
@@ -32,21 +32,19 @@ void AckPdu::initialize(PduDirection direction,
 U32 AckPdu::getBufferSize() const {
     U32 size = this->m_header.getBufferSize();
 
-    // Directive code: 1 byte (FILE_DIRECTIVE_ACK)
+    // Directive code: 1 byte (FileDirective::FILE_DIRECTIVE_ACK)
     // Directive and subtype code (bit-packed): 1 byte
     // Condition code and transaction status (bit-packed): 1 byte
-    size += sizeof(U8) + sizeof(U8) + sizeof(U8);
+    size += static_cast<U32>(sizeof(U8) + sizeof(U8) + sizeof(U8));
 
     return size;
 }
 
-Fw::SerializeStatus AckPdu::serializeTo(Fw::SerialBufferBase& buffer,
-                                         Fw::Endianness mode) const {
+Fw::SerializeStatus AckPdu::serializeTo(Fw::SerialBufferBase& buffer, Fw::Endianness mode) const {
     return this->toSerialBuffer(buffer);
 }
 
-Fw::SerializeStatus AckPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
-                                             Fw::Endianness mode) {
+Fw::SerializeStatus AckPdu::deserializeFrom(Fw::SerialBufferBase& buffer, Fw::Endianness mode) {
     // Deserialize header first
     Fw::SerializeStatus status = this->m_header.fromSerialBuffer(buffer);
     if (status != Fw::FW_SERIALIZE_OK) {
@@ -54,7 +52,7 @@ Fw::SerializeStatus AckPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
     }
 
     // Validate this is a directive PDU (not file data)
-    if (this->m_header.m_pduType != PDU_TYPE_DIRECTIVE) {
+    if (this->m_header.m_pduType != PduType::PDU_TYPE_DIRECTIVE) {
         return Fw::FW_DESERIALIZE_TYPE_MISMATCH;
     }
 
@@ -64,7 +62,7 @@ Fw::SerializeStatus AckPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
     }
-    if (directiveCode != FILE_DIRECTIVE_ACK) {
+    if (directiveCode != static_cast<U8>(FileDirective::FILE_DIRECTIVE_ACK)) {
         return Fw::FW_DESERIALIZE_TYPE_MISMATCH;
     }
 
@@ -92,7 +90,7 @@ Fw::SerializeStatus AckPdu::toSerialBuffer(Fw::SerialBufferBase& serialBuffer) c
     }
 
     // Directive code (ACK = 6)
-    U8 directiveCodeByte = static_cast<U8>(FILE_DIRECTIVE_ACK);
+    U8 directiveCodeByte = static_cast<U8>(FileDirective::FILE_DIRECTIVE_ACK);
     status = serialBuffer.serializeFrom(directiveCodeByte);
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
@@ -102,8 +100,9 @@ Fw::SerializeStatus AckPdu::toSerialBuffer(Fw::SerialBufferBase& serialBuffer) c
     // Bits 7-4: Directive code being acknowledged (4 bits)
     // Bits 3-0: Directive subtype code (4 bits)
     U8 directiveAndSubtype = 0;
-    directiveAndSubtype |= (static_cast<U8>(this->m_directiveCode) & 0x0F) << 4;  // Bits 7-4
-    directiveAndSubtype |= (this->m_directiveSubtypeCode & 0x0F);                  // Bits 3-0
+    directiveAndSubtype =
+        static_cast<U8>(directiveAndSubtype | static_cast<U8>((static_cast<U8>(this->m_directiveCode) & 0x0FU) << 4));
+    directiveAndSubtype = static_cast<U8>(directiveAndSubtype | (this->m_directiveSubtypeCode & 0x0FU));
 
     status = serialBuffer.serializeFrom(directiveAndSubtype);
     if (status != Fw::FW_SERIALIZE_OK) {
@@ -115,8 +114,8 @@ Fw::SerializeStatus AckPdu::toSerialBuffer(Fw::SerialBufferBase& serialBuffer) c
     // Bits 3-2: Spare (0)
     // Bits 1-0: Transaction status (2 bits)
     U8 ccAndStatus = 0;
-    ccAndStatus |= (static_cast<U8>(this->m_conditionCode) & 0x0F) << 4;      // Bits 7-4
-    ccAndStatus |= (static_cast<U8>(this->m_transactionStatus) & 0x03);       // Bits 1-0
+    ccAndStatus = static_cast<U8>(ccAndStatus | static_cast<U8>((static_cast<U8>(this->m_conditionCode) & 0x0FU) << 4));
+    ccAndStatus = static_cast<U8>(ccAndStatus | (static_cast<U8>(this->m_transactionStatus) & 0x03U));
 
     status = serialBuffer.serializeFrom(ccAndStatus);
     if (status != Fw::FW_SERIALIZE_OK) {

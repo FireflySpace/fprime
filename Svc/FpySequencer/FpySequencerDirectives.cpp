@@ -27,7 +27,7 @@ void FpySequencer::sendSignal(Signal signal) {
             break;
         }
         default: {
-            FW_ASSERT(0, static_cast<FwAssertArgType>(signal));
+            FW_ASSERT(false, static_cast<FwAssertArgType>(signal));
         }
     }
 }
@@ -452,6 +452,12 @@ Signal FpySequencer::pushPrm_directiveHandler(const FpySequencer_PushPrmDirectiv
 }
 
 Signal FpySequencer::constCmd_directiveHandler(const FpySequencer_ConstCmdDirective& directive, DirectiveError& error) {
+    // the cmd response code will be pushed to the stack when it comes back, so make sure
+    // there is room for it now, before the cmd is dispatched
+    if (Fpy::MAX_STACK_SIZE - sizeof(Fw::CmdResponse::SerialType) < this->m_runtime.stack.size) {
+        error = DirectiveError::STACK_OVERFLOW;
+        return Signal::stmtResponse_failure;
+    }
     if (this->sendCmd(directive.get_opCode(), directive.get_argBuf(), directive.get__argBufSize()) ==
         Fw::Success::FAILURE) {
         return Signal::stmtResponse_failure;
@@ -666,7 +672,23 @@ DirectiveError FpySequencer::op_fptosi() {
     if (this->m_runtime.stack.size < sizeof(F64)) {
         return DirectiveError::STACK_UNDERFLOW;
     }
-    this->m_runtime.stack.push(static_cast<I64>(this->m_runtime.stack.pop<F64>()));
+    F64 val = this->m_runtime.stack.pop<F64>();
+    // NaN -> 0, out-of-range clamps, in-range truncates toward
+    // zero. The raw static_cast is UB for NaN and out-of-range values.
+    // 2^63 is exactly representable as F64 and is one past I64 max; -2^63
+    // is exactly I64 min and in range.
+    const F64 bound = std::ldexp(1.0, 63);
+    I64 result;
+    if (std::isnan(val)) {
+        result = 0;
+    } else if (val >= bound) {
+        result = std::numeric_limits<I64>::max();
+    } else if (val < -bound) {
+        result = std::numeric_limits<I64>::min();
+    } else {
+        result = static_cast<I64>(val);
+    }
+    this->m_runtime.stack.push(result);
     return DirectiveError::NO_ERROR;
 }
 DirectiveError FpySequencer::op_sitofp() {
@@ -680,7 +702,20 @@ DirectiveError FpySequencer::op_fptoui() {
     if (this->m_runtime.stack.size < sizeof(F64)) {
         return DirectiveError::STACK_UNDERFLOW;
     }
-    this->m_runtime.stack.push(static_cast<U64>(this->m_runtime.stack.pop<F64>()));
+    F64 val = this->m_runtime.stack.pop<F64>();
+    // NaN -> 0, negatives truncate to at most 0 and clamp there,
+    // 2^64 (one past U64 max) and above clamp to U64 max. The raw
+    // static_cast is UB for NaN and out-of-range values.
+    const F64 bound = std::ldexp(1.0, 64);
+    U64 result;
+    if (std::isnan(val) || val < 0.0) {
+        result = 0;
+    } else if (val >= bound) {
+        result = std::numeric_limits<U64>::max();
+    } else {
+        result = static_cast<U64>(val);
+    }
+    this->m_runtime.stack.push(result);
     return DirectiveError::NO_ERROR;
 }
 DirectiveError FpySequencer::op_uitofp() {
@@ -745,8 +780,8 @@ DirectiveError FpySequencer::op_mul() {
     if ((rhs > 0) && (lhs > 0) && ((std::numeric_limits<I64>::max() / rhs) < lhs)) {
         return DirectiveError::ARITHMETIC_OVERFLOW;
     }
-    // Check the both negative case
-    else if ((rhs < 0) && (lhs < 0) && ((std::numeric_limits<I64>::max() / (-1 * rhs)) < (-1 * lhs))) {
+    // Check the both negative case. Compare without negation: negating a value of min is undefined behavior
+    else if ((rhs < 0) && (lhs < 0) && (lhs < (std::numeric_limits<I64>::max() / rhs))) {
         return DirectiveError::ARITHMETIC_OVERFLOW;
     }
     // Underflow can occur with operands of differing signs and occurs when one operand is less than the minimum value
@@ -786,11 +821,19 @@ DirectiveError FpySequencer::op_sdiv() {
     if (rhs == 0) {
         return DirectiveError::DOMAIN_ERROR;
     }
-    // Prevent signed overflow: INT64_MIN / -1 is undefined behavior (SIGFPE on x86)
+    // The one signed division that can overflow: |I64 min / -1| = 2^63 is not
+    // representable (and the C++ expression is UB, SIGFPE on x86)
     if ((lhs == std::numeric_limits<I64>::min()) && (rhs == -1)) {
-        return DirectiveError::DOMAIN_ERROR;
+        return DirectiveError::ARITHMETIC_OVERFLOW;
     }
-    this->m_runtime.stack.push(static_cast<I64>(lhs / rhs));
+    // C++ / truncates toward zero; adjust to match Python's floored division:
+    // an inexact quotient with differing operand signs floors one below the
+    // truncated result. This mirrors op_smod.
+    I64 quotient = lhs / rhs;
+    if (((lhs % rhs) != 0) && ((lhs < 0) != (rhs < 0))) {
+        quotient -= 1;
+    }
+    this->m_runtime.stack.push(quotient);
     return DirectiveError::NO_ERROR;
 }
 DirectiveError FpySequencer::op_umod() {
@@ -814,9 +857,11 @@ DirectiveError FpySequencer::op_smod() {
         return DirectiveError::DOMAIN_ERROR;
     }
     I64 lhs = this->m_runtime.stack.pop<I64>();
-    // Prevent signed overflow: INT64_MIN % -1 is undefined behavior (SIGFPE on x86)
+    // I64 min % -1 is 0, the mathematical remainder (matching wasm i64.rem_s),
+    // but the C++ expression is UB (SIGFPE on x86) so it must be special-cased
     if ((lhs == std::numeric_limits<I64>::min()) && (rhs == -1)) {
-        return DirectiveError::DOMAIN_ERROR;
+        this->m_runtime.stack.push(static_cast<I64>(0));
+        return DirectiveError::NO_ERROR;
     }
     I64 res = static_cast<I64>(lhs % rhs);
     // in order to match Python's behavior,
@@ -899,6 +944,10 @@ DirectiveError FpySequencer::op_fmod() {
     // and is the exact frem + fadd the VM model computes (at most one rounded add).
     if ((res > 0 && rhs < 0) || (res < 0 && rhs > 0)) {
         res += rhs;
+    } else if (res == 0) {
+        // Python normalizes an exact-multiple result so the zero carries the
+        // divisor's sign (CPython float_rem); fmod leaves the dividend's.
+        res = std::copysign(0.0, rhs);
     }
     this->m_runtime.stack.push(res);
     return DirectiveError::NO_ERROR;
@@ -975,9 +1024,42 @@ DirectiveError FpySequencer::op_itrunc_64_32() {
     this->m_runtime.stack.push(static_cast<U32>(src));
     return DirectiveError::NO_ERROR;
 }
+DirectiveError FpySequencer::op_ffloor() {
+    if (this->m_runtime.stack.size < sizeof(F64)) {
+        return DirectiveError::STACK_UNDERFLOW;
+    }
+    F64 val = this->m_runtime.stack.pop<F64>();
+    // std::floor implements IEEE 754 roundToIntegralTowardNegative: +-0, +-inf
+    // and NaN pass through, and the sign of a zero is preserved.
+    this->m_runtime.stack.push(std::floor(val));
+    return DirectiveError::NO_ERROR;
+}
+DirectiveError FpySequencer::op_iabs() {
+    if (this->m_runtime.stack.size < sizeof(I64)) {
+        return DirectiveError::STACK_UNDERFLOW;
+    }
+    I64 val = this->m_runtime.stack.pop<I64>();
+    // abs(I64 min) is not representable in I64 (and -val on it is UB)
+    if (val == std::numeric_limits<I64>::min()) {
+        return DirectiveError::ARITHMETIC_OVERFLOW;
+    }
+    this->m_runtime.stack.push(val < 0 ? -val : val);
+    return DirectiveError::NO_ERROR;
+}
+DirectiveError FpySequencer::op_fabs() {
+    if (this->m_runtime.stack.size < sizeof(F64)) {
+        return DirectiveError::STACK_UNDERFLOW;
+    }
+    F64 val = this->m_runtime.stack.pop<F64>();
+    // IEEE 754 abs: clears the sign bit and changes nothing else, so NaN
+    // payloads pass through.
+    this->m_runtime.stack.push(std::fabs(val));
+    return DirectiveError::NO_ERROR;
+}
 Signal FpySequencer::stackOp_directiveHandler(const FpySequencer_StackOpDirective& directive, DirectiveError& error) {
     // coding error, should not have gotten to this stack op handler
-    FW_ASSERT(directive.get__op() >= Fpy::DirectiveId::OR && directive.get__op() <= Fpy::DirectiveId::ITRUNC_64_32,
+    FW_ASSERT((directive.get__op() >= Fpy::DirectiveId::OR && directive.get__op() <= Fpy::DirectiveId::ITRUNC_64_32) ||
+                  (directive.get__op() >= Fpy::DirectiveId::FFLOOR && directive.get__op() <= Fpy::DirectiveId::FABS),
               static_cast<FwAssertArgType>(directive.get__op()));
 
     switch (directive.get__op()) {
@@ -1125,8 +1207,17 @@ Signal FpySequencer::stackOp_directiveHandler(const FpySequencer_StackOpDirectiv
         case Fpy::DirectiveId::ITRUNC_64_32:
             error = this->op_itrunc_64_32();
             break;
+        case Fpy::DirectiveId::FFLOOR:
+            error = this->op_ffloor();
+            break;
+        case Fpy::DirectiveId::IABS:
+            error = this->op_iabs();
+            break;
+        case Fpy::DirectiveId::FABS:
+            error = this->op_fabs();
+            break;
         default:
-            FW_ASSERT(0, directive.get__op());
+            FW_ASSERT(false, directive.get__op());
             break;
     }
     if (error != DirectiveError::NO_ERROR) {
@@ -1136,11 +1227,11 @@ Signal FpySequencer::stackOp_directiveHandler(const FpySequencer_StackOpDirectiv
 }
 
 Signal FpySequencer::exit_directiveHandler(const FpySequencer_ExitDirective& directive, DirectiveError& error) {
-    if (this->m_runtime.stack.size < 1) {
+    if (this->m_runtime.stack.size < sizeof(I32)) {
         error = DirectiveError::STACK_UNDERFLOW;
         return Signal::stmtResponse_failure;
     }
-    U8 errorCode = this->m_runtime.stack.pop<U8>();
+    I32 errorCode = this->m_runtime.stack.pop<I32>();
     // exit(0), no error
     if (errorCode == 0) {
         // just goto the end of the sequence
@@ -1294,6 +1385,14 @@ Signal FpySequencer::stackCmd_directiveHandler(const FpySequencer_StackCmdDirect
 
     // also pop the args off the stack
     this->m_runtime.stack.size -= directive.get_argsSize();
+
+    // the cmd response code will be pushed to the stack when it comes back, so make sure
+    // there is room for it now, before the cmd is dispatched. popping the opcode above
+    // frees some room, but FwOpcodeType is configurable so it may not be enough
+    if (Fpy::MAX_STACK_SIZE - sizeof(Fw::CmdResponse::SerialType) < this->m_runtime.stack.size) {
+        error = DirectiveError::STACK_OVERFLOW;
+        return Signal::stmtResponse_failure;
+    }
 
     if (this->sendCmd(opcode, this->m_runtime.stack.bytes + argBufOffset, directive.get_argsSize()) ==
         Fw::Success::FAILURE) {
@@ -1501,14 +1600,9 @@ Signal FpySequencer::return_directiveHandler(const FpySequencer_ReturnDirective&
         return Signal::stmtResponse_failure;
     }
 
-    // returnValSize is guaranteed to be less than Fpy::MAX_STACK_SIZE because it's less than the stack.size
-    // thus the memcpy won't fail
-
-    // Save the return value if there is one
-    U8 returnValue[Fpy::MAX_STACK_SIZE] = {};
-    if (returnValSize > 0) {
-        memcpy(returnValue, this->m_runtime.stack.top() - returnValSize, returnValSize);
-    }
+    // Remember where the return value lives; it is moved down the stack below rather than copied
+    // through a local buffer, which at Fpy::MAX_STACK_SIZE would not fit a typical task stack
+    const Fpy::StackSizeType returnValOffset = this->m_runtime.stack.size - returnValSize;
 
     // Truncate the stack to stack_frame_start (discard all local variables)
     if (this->m_runtime.stack.currentFrameStart > this->m_runtime.stack.size) {
@@ -1558,7 +1652,12 @@ Signal FpySequencer::return_directiveHandler(const FpySequencer_ReturnDirective&
         error = DirectiveError::STACK_OVERFLOW;
         return Signal::stmtResponse_failure;
     }
-    this->m_runtime.stack.push(returnValue, returnValSize);
+    if (returnValSize > 0) {
+        // Not Stack::move: the source region sits above the truncated stack size, which
+        // Stack::move rejects. Both regions were bounds-checked above against MAX_STACK_SIZE.
+        (void)memmove(this->m_runtime.stack.top(), &this->m_runtime.stack.bytes[returnValOffset], returnValSize);
+        this->m_runtime.stack.size += returnValSize;
+    }
 
     return Signal::stmtResponse_success;
 }
@@ -1659,7 +1758,8 @@ Signal FpySequencer::popEvent_directiveHandler(const FpySequencer_PopEventDirect
 
 Signal FpySequencer::popSerializable_directiveHandler(const FpySequencer_PopSerializableDirective& directive,
                                                       DirectiveError& error) {
-    FW_ASSERT(directive.get_size() <= Fpy::MAX_STACK_SIZE, static_cast<FwAssertArgType>(directive.get_size()));
+    // No size assertion here: an oversized size is untrusted sequence content and is rejected by
+    // the stack check below, since the stack can never hold more than Fpy::MAX_STACK_SIZE bytes
 
     // Validate port index is in range (using enum constant value)
     constexpr FwIndexType MAX_PORTS = static_cast<FwIndexType>(Svc::Fpy::SerialPortIndex::MAX_SERIAL_PORTS);

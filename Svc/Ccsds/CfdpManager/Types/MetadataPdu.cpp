@@ -4,9 +4,9 @@
 // \brief  cpp file for CFDP Metadata PDU
 // ======================================================================
 
-#include <Svc/Ccsds/CfdpManager/Types/MetadataPdu.hpp>
 #include <Fw/Types/Assert.hpp>
 #include <Fw/Types/StringUtils.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/MetadataPdu.hpp>
 #include <config/CfdpCfg.hpp>
 
 namespace Svc {
@@ -14,15 +14,15 @@ namespace Ccsds {
 namespace Cfdp {
 
 void MetadataPdu::initialize(PduDirection direction,
-                                   Cfdp::Class::T txmMode,
-                                   EntityId sourceEid,
-                                   TransactionSeq transactionSeq,
-                                   EntityId destEid,
-                                   FileSize fileSize,
-                                   const Fw::String& sourceFilename,
-                                   const Fw::String& destFilename,
-                                   ChecksumType checksumType,
-                                   U8 closureRequested) {
+                             Cfdp::Class::T txmMode,
+                             EntityId sourceEid,
+                             TransactionSeq transactionSeq,
+                             EntityId destEid,
+                             FileSize fileSize,
+                             const Fw::String& sourceFilename,
+                             const Fw::String& destFilename,
+                             ChecksumType checksumType,
+                             U8 closureRequested) {
     this->m_header.initialize(PduTypeEnum::METADATA, direction, txmMode, sourceEid, transactionSeq, destEid);
 
     this->m_fileSize = fileSize;
@@ -47,7 +47,7 @@ U32 MetadataPdu::getBufferSize() const {
     // Directive code: 1 byte
     // Segmentation control byte (includes closure requested and checksum type): 1 byte
     // File size: variable
-    size += sizeof(U8) + sizeof(U8) + sizeof(FileSize);
+    size += static_cast<U32>(sizeof(U8) + sizeof(U8) + sizeof(FileSize));
 
     // Source filename LV: length(1) + value(n)
     size += 1 + static_cast<U32>(this->m_sourceFilename.length());
@@ -58,13 +58,11 @@ U32 MetadataPdu::getBufferSize() const {
     return size;
 }
 
-Fw::SerializeStatus MetadataPdu::serializeTo(Fw::SerialBufferBase& buffer,
-                                               Fw::Endianness mode) const {
+Fw::SerializeStatus MetadataPdu::serializeTo(Fw::SerialBufferBase& buffer, Fw::Endianness mode) const {
     return this->toSerialBuffer(buffer);
 }
 
-Fw::SerializeStatus MetadataPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
-                                                   Fw::Endianness mode) {
+Fw::SerializeStatus MetadataPdu::deserializeFrom(Fw::SerialBufferBase& buffer, Fw::Endianness mode) {
     // Deserialize header first
     Fw::SerializeStatus status = this->m_header.fromSerialBuffer(buffer);
     if (status != Fw::FW_SERIALIZE_OK) {
@@ -72,7 +70,7 @@ Fw::SerializeStatus MetadataPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
     }
 
     // Validate this is a directive PDU (not file data)
-    if (this->m_header.m_pduType != PDU_TYPE_DIRECTIVE) {
+    if (this->m_header.m_pduType != PduType::PDU_TYPE_DIRECTIVE) {
         return Fw::FW_DESERIALIZE_TYPE_MISMATCH;
     }
 
@@ -82,7 +80,7 @@ Fw::SerializeStatus MetadataPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
     }
-    if (directiveCode != FILE_DIRECTIVE_METADATA) {
+    if (directiveCode != static_cast<U8>(FileDirective::FILE_DIRECTIVE_METADATA)) {
         return Fw::FW_DESERIALIZE_TYPE_MISMATCH;
     }
 
@@ -110,7 +108,7 @@ Fw::SerializeStatus MetadataPdu::toSerialBuffer(Fw::SerialBufferBase& serialBuff
     }
 
     // Directive code (METADATA = 7)
-    U8 directiveCode = static_cast<U8>(FILE_DIRECTIVE_METADATA);
+    U8 directiveCode = static_cast<U8>(FileDirective::FILE_DIRECTIVE_METADATA);
     status = serialBuffer.serializeFrom(directiveCode);
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
@@ -121,8 +119,9 @@ Fw::SerializeStatus MetadataPdu::toSerialBuffer(Fw::SerialBufferBase& serialBuff
     // bits 6-4: reserved (000b)
     // bits 3-0: checksum_type
     U8 segmentationControl = 0;
-    segmentationControl |= (this->m_closureRequested & 0x01) << 7;
-    segmentationControl |= (static_cast<U8>(this->m_checksumType) & 0x0F);
+    segmentationControl =
+        static_cast<U8>(segmentationControl | static_cast<U8>((this->m_closureRequested & 0x01U) << 7));
+    segmentationControl = static_cast<U8>(segmentationControl | (static_cast<U8>(this->m_checksumType) & 0x0FU));
 
     status = serialBuffer.serializeFrom(segmentationControl);
     if (status != Fw::FW_SERIALIZE_OK) {
@@ -143,10 +142,8 @@ Fw::SerializeStatus MetadataPdu::toSerialBuffer(Fw::SerialBufferBase& serialBuff
     }
 
     // Serialize source filename bytes without length prefix
-    status = serialBuffer.serializeFrom(
-        reinterpret_cast<const U8*>(this->m_sourceFilename.toChar()),
-        sourceFilenameLength,
-        Fw::Serialization::OMIT_LENGTH);
+    status = serialBuffer.serializeFrom(reinterpret_cast<const U8*>(this->m_sourceFilename.toChar()),
+                                        sourceFilenameLength, Fw::Serialization::OMIT_LENGTH);
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
     }
@@ -159,10 +156,8 @@ Fw::SerializeStatus MetadataPdu::toSerialBuffer(Fw::SerialBufferBase& serialBuff
     }
 
     // Serialize dest filename bytes without length prefix
-    status = serialBuffer.serializeFrom(
-        reinterpret_cast<const U8*>(this->m_destFilename.toChar()),
-        destFilenameLength,
-        Fw::Serialization::OMIT_LENGTH);
+    status = serialBuffer.serializeFrom(reinterpret_cast<const U8*>(this->m_destFilename.toChar()), destFilenameLength,
+                                        Fw::Serialization::OMIT_LENGTH);
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
     }
@@ -210,15 +205,15 @@ Fw::SerializeStatus MetadataPdu::fromSerialBuffer(Fw::SerialBufferBase& serialBu
     }
 
     // Read filename into temporary buffer
-    char sourceFilenameBuffer[MaxFilePathSize + 1];
+    U8 sourceFilenameBuffer[MaxFilePathSize + 1];
     FwSizeType actualLength = sourceFilenameLength;
-    status = serialBuffer.deserializeTo(reinterpret_cast<U8*>(sourceFilenameBuffer), actualLength, Fw::Serialization::OMIT_LENGTH);
+    status = serialBuffer.deserializeTo(sourceFilenameBuffer, actualLength, Fw::Serialization::OMIT_LENGTH);
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
     }
     // Null-terminate before assigning to Fw::String
     sourceFilenameBuffer[sourceFilenameLength] = '\0';
-    this->m_sourceFilename = sourceFilenameBuffer;
+    this->m_sourceFilename = reinterpret_cast<const CHAR*>(sourceFilenameBuffer);
 
     // Destination filename LV
     U8 destFilenameLength;
@@ -238,15 +233,15 @@ Fw::SerializeStatus MetadataPdu::fromSerialBuffer(Fw::SerialBufferBase& serialBu
     }
 
     // Read filename into temporary buffer
-    char destFilenameBuffer[MaxFilePathSize + 1];
+    U8 destFilenameBuffer[MaxFilePathSize + 1];
     actualLength = destFilenameLength;
-    status = serialBuffer.deserializeTo(reinterpret_cast<U8*>(destFilenameBuffer), actualLength, Fw::Serialization::OMIT_LENGTH);
+    status = serialBuffer.deserializeTo(destFilenameBuffer, actualLength, Fw::Serialization::OMIT_LENGTH);
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
     }
     // Null-terminate before assigning to Fw::String
     destFilenameBuffer[destFilenameLength] = '\0';
-    this->m_destFilename = destFilenameBuffer;
+    this->m_destFilename = reinterpret_cast<const CHAR*>(destFilenameBuffer);
 
     return Fw::FW_SERIALIZE_OK;
 }

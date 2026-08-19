@@ -4,8 +4,8 @@
 // \brief  cpp file for CFDP TLV (Type-Length-Value) classes
 // ======================================================================
 
-#include <Svc/Ccsds/CfdpManager/Types/Tlv.hpp>
 #include <Fw/Types/Assert.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/Tlv.hpp>
 #include <cstring>
 
 namespace Svc {
@@ -29,7 +29,7 @@ void TlvData::setEntityId(EntityId eid) {
 }
 
 void TlvData::setData(const U8* data, U8 length) {
-    FW_ASSERT(length <= 255, length);
+    // length is U8 so it's always <= 255, assertion is redundant
     FW_ASSERT(data != nullptr);
 
     memcpy(this->m_rawData, data, length);
@@ -52,12 +52,12 @@ U8 TlvData::getLength() const {
 // Tlv
 // ======================================================================
 
-Tlv::Tlv() : m_type(TLV_TYPE_ENTITY_ID) {
+Tlv::Tlv() : m_type(TlvType::TLV_TYPE_ENTITY_ID) {
     // Default constructor
 }
 
 void Tlv::initialize(EntityId eid) {
-    this->m_type = TLV_TYPE_ENTITY_ID;
+    this->m_type = TlvType::TLV_TYPE_ENTITY_ID;
     this->m_data.setEntityId(eid);
 }
 
@@ -96,7 +96,7 @@ Fw::SerializeStatus Tlv::toSerialBuffer(Fw::SerialBufferBase& serialBuffer) cons
     }
 
     // Serialize data
-    if (this->m_type == TLV_TYPE_ENTITY_ID) {
+    if (this->m_type == TlvType::TLV_TYPE_ENTITY_ID) {
         // For Entity ID, serialize as EntityId
         EntityId eid = this->m_data.getEntityId();
         status = serialBuffer.serializeFrom(eid);
@@ -136,13 +136,31 @@ Fw::SerializeStatus Tlv::fromSerialBuffer(Fw::SerialBufferBase& serialBuffer) {
     }
 
     // Deserialize data
-    if (this->m_type == TLV_TYPE_ENTITY_ID) {
-        // For Entity ID, deserialize as EntityId
-        EntityId eid;
-        status = serialBuffer.deserializeTo(eid);
-        if (status != Fw::FW_SERIALIZE_OK) {
-            return status;
+    if (this->m_type == TlvType::TLV_TYPE_ENTITY_ID) {
+        // For Entity ID, read length bytes and convert to EntityId
+        // Per CFDP spec, Entity IDs can be 1, 2, 4, or 8 bytes
+        // We support up to sizeof(EntityId) bytes
+        if (length > sizeof(EntityId)) {
+            return Fw::FW_DESERIALIZE_FORMAT_ERROR;
         }
+
+        // Read length bytes as raw data, then convert to EntityId (big-endian)
+        U8 rawData[sizeof(EntityId)];
+        memset(rawData, 0, sizeof(rawData));  // Zero-pad
+
+        for (U8 i = 0; i < length; i++) {
+            status = serialBuffer.deserializeTo(rawData[i]);
+            if (status != Fw::FW_SERIALIZE_OK) {
+                return status;
+            }
+        }
+
+        // Convert big-endian bytes to EntityId
+        EntityId eid = 0;
+        for (U8 i = 0; i < length; i++) {
+            eid = (eid << 8) | rawData[i];
+        }
+
         this->m_data.setEntityId(eid);
     } else {
         // For other types, deserialize raw data
@@ -168,7 +186,7 @@ TlvList::TlvList() : m_numTlv(0) {
 }
 
 bool TlvList::appendTlv(const Tlv& tlv) {
-    if (this->m_numTlv >= CFDP_MAX_TLV) {
+    if (this->m_numTlv >= MaxTlv) {
         return false;  // List is full
     }
 
@@ -219,7 +237,7 @@ Fw::SerializeStatus TlvList::fromSerialBuffer(Fw::SerialBufferBase& serialBuffer
     this->m_numTlv = 0;
 
     // Decode TLVs until buffer is exhausted or max count reached
-    while (serialBuffer.getDeserializeSizeLeft() > 0 && this->m_numTlv < CFDP_MAX_TLV) {
+    while (serialBuffer.getDeserializeSizeLeft() > 0 && this->m_numTlv < MaxTlv) {
         status = this->m_tlvs[this->m_numTlv].fromSerialBuffer(serialBuffer);
         if (status != Fw::FW_SERIALIZE_OK) {
             // If we fail to decode a TLV, stop (could be end of buffer or invalid data)

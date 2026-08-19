@@ -41,8 +41,8 @@
 
 #include <Fw/Types/BasicTypes.hpp>
 
-#include <Svc/Ccsds/CfdpManager/Types/Types.hpp>
 #include <Svc/Ccsds/CfdpManager/Types/PduBase.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/Types.hpp>
 
 namespace Svc {
 namespace Ccsds {
@@ -88,9 +88,8 @@ using StateRecvFunc = void (Transaction::*)(const Fw::Buffer& buffer);
  * Each possible state has a corresponding function pointer in the table to implement
  * the PDU transmit action(s) associated with that state.
  */
-struct TxnSendDispatchTable
-{
-    StateSendFunc tx[TXN_STATE_INVALID]; /**< \brief Transmit handler function */
+struct TxnSendDispatchTable {
+    StateSendFunc tx[static_cast<U32>(TxnState::TXN_STATE_INVALID)]; /**< \brief Transmit handler function */
 };
 
 /**
@@ -100,10 +99,9 @@ struct TxnSendDispatchTable
  * Each possible state has a corresponding function pointer in the table to implement
  * the PDU receive action(s) associated with that state.
  */
-struct TxnRecvDispatchTable
-{
+struct TxnRecvDispatchTable {
     /** \brief a separate recv handler for each possible file directive PDU in this state */
-    StateRecvFunc rx[TXN_STATE_INVALID];
+    StateRecvFunc rx[static_cast<U32>(TxnState::TXN_STATE_INVALID)];
 };
 
 /**
@@ -113,10 +111,9 @@ struct TxnRecvDispatchTable
  * than file data - this provides a table to branch to a different handler
  * function depending on the value of the file directive code.
  */
-struct FileDirectiveDispatchTable
-{
+struct FileDirectiveDispatchTable {
     /** \brief a separate recv handler for each possible file directive PDU in this state */
-    StateRecvFunc fdirective[FILE_DIRECTIVE_INVALID_MAX];
+    StateRecvFunc fdirective[static_cast<U32>(FileDirective::FILE_DIRECTIVE_INVALID_MAX)];
 };
 
 /**
@@ -125,9 +122,8 @@ struct FileDirectiveDispatchTable
  * This is used for "receive file" transactions upon receipt of a directive PDU.
  * Depending on the sub-state of the transaction, a different action may be taken.
  */
-struct RSubstateDispatchTable
-{
-    const FileDirectiveDispatchTable *state[RX_SUB_STATE_NUM_STATES];
+struct RSubstateDispatchTable {
+    const FileDirectiveDispatchTable* state[static_cast<U32>(RxSubState::RX_SUB_STATE_NUM_STATES)];
 };
 
 /**
@@ -136,9 +132,8 @@ struct RSubstateDispatchTable
  * This is used for "send file" transactions upon receipt of a directive PDU.
  * Depending on the sub-state of the transaction, a different action may be taken.
  */
-struct SSubstateRecvDispatchTable
-{
-    const FileDirectiveDispatchTable *substate[TX_SUB_STATE_NUM_STATES];
+struct SSubstateRecvDispatchTable {
+    const FileDirectiveDispatchTable* substate[static_cast<U32>(TxSubState::TX_SUB_STATE_NUM_STATES)];
 };
 
 /**
@@ -147,9 +142,8 @@ struct SSubstateRecvDispatchTable
  * This is used for "send file" transactions to generate the next PDU to be sent.
  * Depending on the sub-state of the transaction, a different action may be taken.
  */
-struct SSubstateSendDispatchTable
-{
-    StateSendFunc substate[TX_SUB_STATE_NUM_STATES];
+struct SSubstateSendDispatchTable {
+    StateSendFunc substate[static_cast<U32>(TxSubState::TX_SUB_STATE_NUM_STATES)];
 };
 
 /**
@@ -161,9 +155,9 @@ struct SSubstateSendDispatchTable
  * - TransactionRx.cpp: RX (receive) state machine implementation
  */
 class Transaction {
-  friend class Engine;
-  friend class Channel;
-  friend class CfdpManagerTester;
+    friend class Engine;
+    friend class Channel;
+    friend class CfdpManagerTester;
 
   public:
     // ----------------------------------------------------------------------
@@ -208,7 +202,7 @@ class Transaction {
      * @param context Pointer to CfdpTraverseTransSeqArg
      * @return Traversal status (CONTINUE or EXIT)
      */
-    static CListTraverseStatus findBySequenceNumberCallback(CListNode *node, void *context);
+    static CListTraverseStatus findBySequenceNumberCallback(CListNode* node, void* context);
 
     /**
      * @brief Static callback for priority search
@@ -219,7 +213,7 @@ class Transaction {
      * @param context Pointer to CfdpTraversePriorityArg
      * @return Traversal status (CONTINUE or EXIT)
      */
-    static CListTraverseStatus prioritySearchCallback(CListNode *node, void *context);
+    static CListTraverseStatus prioritySearchCallback(CListNode* node, void* context);
 
     // ----------------------------------------------------------------------
     // Accessors
@@ -301,7 +295,7 @@ class Transaction {
      *
      * @param cont Unused, exists for compatibility with tick processor
      */
-    void sTick(int *cont);
+    void sTick(I32* cont);
 
     /************************************************************************/
     /** @brief Perform NAK response for TX transactions
@@ -312,7 +306,7 @@ class Transaction {
      *
      * @param cont Set to 1 if a NAK was generated
      */
-    void sTickNak(int *cont);
+    void sTickNak(I32* cont);
 
     /************************************************************************/
     /** @brief Cancel an S transaction.
@@ -409,7 +403,7 @@ class Transaction {
      *
      * @retval Cfdp::Status::SUCCESS on success.
      * @retval Cfdp::Status::SEND_PDU_NO_BUF_AVAIL_ERROR if message buffer cannot be obtained.
-     * @retval SEND_PDU_ERROR if an error occurred while building the packet.
+     * @retval Cfdp::Status::ERROR if an error occurred while building/serializing the packet.
      */
     Status::T sSendEof();
 
@@ -457,7 +451,7 @@ class Transaction {
      *
      * @param cont Ignored/Unused
      */
-    void rTick(int *cont);
+    void rTick(I32* cont);
 
     /************************************************************************/
     /** @brief Cancel an R transaction.
@@ -514,7 +508,7 @@ class Transaction {
      *
      * @param ok_to_send_nak If set to 0, suppress sending of a NAK packet
      */
-    void r2Complete(int ok_to_send_nak);
+    void r2Complete(I32 ok_to_send_nak);
 
     // ----------------------------------------------------------------------
     // Dispatch Methods (ported from cf_cfdp_dispatch.c)
@@ -531,9 +525,7 @@ class Transaction {
      * @param dispatch  Dispatch table for file directive PDUs
      * @param fd_fn     Function to handle file data PDUs
      */
-    void rDispatchRecv(const Fw::Buffer& buffer,
-                       const RSubstateDispatchTable *dispatch,
-                       StateRecvFunc fd_fn);
+    void rDispatchRecv(const Fw::Buffer& buffer, const RSubstateDispatchTable* dispatch, StateRecvFunc fd_fn);
 
     /************************************************************************/
     /** @brief Dispatch function for received PDUs on send-file transactions
@@ -544,8 +536,7 @@ class Transaction {
      * @param buffer    Buffer containing the PDU to dispatch
      * @param dispatch  Dispatch table for file directive PDUs
      */
-    void sDispatchRecv(const Fw::Buffer& buffer,
-                       const SSubstateRecvDispatchTable *dispatch);
+    void sDispatchRecv(const Fw::Buffer& buffer, const SSubstateRecvDispatchTable* dispatch);
 
     /************************************************************************/
     /** @brief Dispatch function to send/generate PDUs on send-file transactions
@@ -556,7 +547,7 @@ class Transaction {
      *
      * @param dispatch  State-based dispatch table
      */
-    void sDispatchTransmit(const SSubstateSendDispatchTable *dispatch);
+    void sDispatchTransmit(const SSubstateSendDispatchTable* dispatch);
 
     /************************************************************************/
     /** @brief Top-level Dispatch function to send a PDU based on current state
@@ -566,7 +557,7 @@ class Transaction {
      *
      * @param dispatch  Transaction State-based Dispatch table
      */
-    void txStateDispatch(const TxnSendDispatchTable *dispatch);
+    void txStateDispatch(const TxnSendDispatchTable* dispatch);
 
   private:
     /************************************************************************/
@@ -641,7 +632,14 @@ class Transaction {
      * @param chunk Pointer to the gap chunk information
      * @param nak   Pointer to the NAK PDU being constructed
      */
-    void r2GapCompute(const Chunk *chunk, NakPdu& nak);
+    void r2GapCompute(const Chunk* chunk, NakPdu& nak);
+
+    /**
+     * @brief Static wrapper for r2GapCompute callback
+     * @param chunk Gap chunk
+     * @param opaque Pointer to GapComputeContext struct
+     */
+    static void r2GapComputeWrapper(const Chunk* chunk, void* opaque);
 
     /************************************************************************/
     /** @brief Send a NAK PDU for R2.
@@ -811,7 +809,7 @@ class Transaction {
     /**
      * @brief Pointer to playback entry
      *
-     * NULL if transaction does not belong to a playback.
+     * nullptr if transaction does not belong to a playback.
      */
     Playback* m_pb;
 

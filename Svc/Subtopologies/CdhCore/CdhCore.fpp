@@ -42,6 +42,10 @@ module CdhCore {
         // Startup TLM and Config verbosity for Versions
         CdhCore::version.config(true);
         """
+        phase Fpp.ToCpp.Phases.startTasks """
+        // Startup TLM and EVENTS
+        CdhCore::version.start();
+        """
     }
 
     instance textLogger: Svc.PassiveTextLogger base id CdhCoreConfig.BASE_ID + 0x004000
@@ -91,6 +95,9 @@ module CdhCore {
 
         @ Input port for scheduling the Health component
         port healthRun  = $health.Run
+
+        @ Input port for scheduling the EventManager (dropped event telemetry)
+        port eventsRun  = events.run
 
     } # end topology
 } # end CdhCore Subtopology

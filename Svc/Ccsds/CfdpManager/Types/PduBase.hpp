@@ -10,9 +10,9 @@
 #ifndef Svc_Ccsds_Cfdp_PduBase_HPP
 #define Svc_Ccsds_Cfdp_PduBase_HPP
 
-#include <Fw/Types/Serializable.hpp>
 #include <Fw/Buffer/Buffer.hpp>
 #include <Fw/FPrimeBasicTypes.hpp>
+#include <Fw/Types/Serializable.hpp>
 #include <Svc/Ccsds/CfdpManager/Types/PduHeader.hpp>
 
 namespace Svc {
@@ -37,15 +37,15 @@ class PduBase : public Fw::Serializable {
     //! @param buffer The buffer to serialize to
     //! @param mode The endianness mode (default: BIG)
     //! @return Serialization status
-    virtual Fw::SerializeStatus serializeTo(Fw::SerialBufferBase& buffer,
-                                            Fw::Endianness mode = Fw::Endianness::BIG) const override = 0;
+    Fw::SerializeStatus serializeTo(Fw::SerialBufferBase& buffer,
+                                    Fw::Endianness mode = Fw::Endianness::BIG) const override = 0;
 
     //! Fw::Serializable interface - deserialize from buffer
     //! @param buffer The buffer to deserialize from
     //! @param mode The endianness mode (default: BIG)
     //! @return Deserialization status
-    virtual Fw::SerializeStatus deserializeFrom(Fw::SerialBufferBase& buffer,
-                                                Fw::Endianness mode = Fw::Endianness::BIG) override = 0;
+    Fw::SerializeStatus deserializeFrom(Fw::SerialBufferBase& buffer,
+                                        Fw::Endianness mode = Fw::Endianness::BIG) override = 0;
 
     //! Get the buffer size needed to hold this PDU
     //! @return Buffer size in bytes
@@ -85,11 +85,11 @@ class PduBase : public Fw::Serializable {
 }  // namespace Svc
 
 // Include all concrete PDU types for convenience (umbrella header pattern)
-#include <Svc/Ccsds/CfdpManager/Types/MetadataPdu.hpp>
-#include <Svc/Ccsds/CfdpManager/Types/FileDataPdu.hpp>
-#include <Svc/Ccsds/CfdpManager/Types/EofPdu.hpp>
-#include <Svc/Ccsds/CfdpManager/Types/FinPdu.hpp>
 #include <Svc/Ccsds/CfdpManager/Types/AckPdu.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/EofPdu.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/FileDataPdu.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/FinPdu.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/MetadataPdu.hpp>
 #include <Svc/Ccsds/CfdpManager/Types/NakPdu.hpp>
 
 #endif  // Svc_Ccsds_Cfdp_PduBase_HPP

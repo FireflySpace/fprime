@@ -8,8 +8,8 @@
 #define Svc_Ccsds_Cfdp_EofPdu_HPP
 
 #include <Svc/Ccsds/CfdpManager/Types/PduBase.hpp>
-#include <Svc/Ccsds/CfdpManager/Types/Types.hpp>
 #include <Svc/Ccsds/CfdpManager/Types/Tlv.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/Types.hpp>
 
 namespace Svc {
 namespace Ccsds {
@@ -32,17 +32,17 @@ class EofPdu : public PduBase {
 
   public:
     //! Constructor
-    EofPdu() : m_conditionCode(CONDITION_CODE_NO_ERROR), m_checksum(0), m_fileSize(0) {}
+    EofPdu() : m_conditionCode(ConditionCode::CONDITION_CODE_NO_ERROR), m_checksum(0), m_fileSize(0) {}
 
     //! Initialize an EOF PDU
     void initialize(PduDirection direction,
-                   Cfdp::Class::T txmMode,
-                   EntityId sourceEid,
-                   TransactionSeq transactionSeq,
-                   EntityId destEid,
-                   ConditionCode conditionCode,
-                   U32 checksum,
-                   FileSize fileSize);
+                    Cfdp::Class::T txmMode,
+                    EntityId sourceEid,
+                    TransactionSeq transactionSeq,
+                    EntityId destEid,
+                    ConditionCode conditionCode,
+                    U32 checksum,
+                    FileSize fileSize);
 
     //! Compute the buffer size needed
     U32 getBufferSize() const override;
@@ -68,7 +68,7 @@ class EofPdu : public PduBase {
     FileSize getFileSize() const { return this->m_fileSize; }
 
     //! Get directive code
-    FileDirective getDirectiveCode() const { return FILE_DIRECTIVE_END_OF_FILE; }
+    FileDirective getDirectiveCode() const { return FileDirective::FILE_DIRECTIVE_END_OF_FILE; }
 
     //! Add a TLV to this EOF PDU
     //! @return true if added successfully, false if list is full

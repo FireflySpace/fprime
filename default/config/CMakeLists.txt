@@ -6,12 +6,14 @@
 register_fprime_config(
     AUTOCODER_INPUTS
         "${CMAKE_CURRENT_LIST_DIR}/AcConstants.fpp"
+        "${CMAKE_CURRENT_LIST_DIR}/AsyncI2cCfg.fpp"
         "${CMAKE_CURRENT_LIST_DIR}/CfdpCfg.fpp"
         "${CMAKE_CURRENT_LIST_DIR}/ComCfg.fpp"
         "${CMAKE_CURRENT_LIST_DIR}/DpCfg.fpp"
         "${CMAKE_CURRENT_LIST_DIR}/FileDispatcherCfg.fpp"
         "${CMAKE_CURRENT_LIST_DIR}/FpConfig.fpp"
         "${CMAKE_CURRENT_LIST_DIR}/FpConstants.fpp"
+        "${CMAKE_CURRENT_LIST_DIR}/FprimeRouterCfg.fpp"
         "${CMAKE_CURRENT_LIST_DIR}/FpySequencerCfg.fpp"
         "${CMAKE_CURRENT_LIST_DIR}/GenericHubCfg.fpp"
         "${CMAKE_CURRENT_LIST_DIR}/MemoryAllocation.fpp"
@@ -22,6 +24,7 @@ register_fprime_config(
     HEADERS
         "${CMAKE_CURRENT_LIST_DIR}/MemoryAllocation.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/EventManagerCfg.hpp"
+        "${CMAKE_CURRENT_LIST_DIR}/PassiveRateGroupCfg.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/ActiveRateGroupCfg.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/ActiveTextLoggerCfg.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/BufferManagerComponentImplCfg.hpp"

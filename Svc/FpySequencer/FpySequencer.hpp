@@ -150,15 +150,15 @@ class FpySequencer : public FpySequencerComponentBase {
     void RUN_cmdHandler(FwOpcodeType opCode,               //!< The opcode
                         U32 cmdSeq,                        //!< The command sequence number
                         const Fw::CmdStringArg& fileName,  //!< The name of the sequence file
-                        Svc::BlockState block              //!< Return command status when complete or not
+                        const Svc::BlockState& block       //!< Return command status when complete or not
                         ) override;
 
     //! Handler implementation for command RUN_ARGS
     void RUN_ARGS_cmdHandler(FwOpcodeType opCode,               //!< The opcode
                              U32 cmdSeq,                        //!< The command sequence number
                              const Fw::CmdStringArg& fileName,  //!< The name of the sequence file
-                             Svc::BlockState block,             //!< Return command status when complete or not
-                             Svc::SeqArgs args                  //!< Arguments to pass to the sequencer
+                             const Svc::BlockState& block,      //!< Return command status when complete or not
+                             const Svc::SeqArgs& args           //!< Arguments to pass to the sequencer
                              ) override;
 
     //! Handler for command VALIDATE
@@ -175,15 +175,15 @@ class FpySequencer : public FpySequencerComponentBase {
     void VALIDATE_ARGS_cmdHandler(FwOpcodeType opCode,               //!< The opcode
                                   U32 cmdSeq,                        //!< The command sequence number
                                   const Fw::CmdStringArg& fileName,  //!< The name of the sequence file
-                                  Svc::SeqArgs buffer                //!< Arguments to pass to the sequencer
+                                  const Svc::SeqArgs& buffer         //!< Arguments to pass to the sequencer
                                   ) override;
 
     //! Handler implementation for command RUN_VALIDATED
     //!
     //! Must be called after VALIDATE. Runs the sequence that was validated.
-    void RUN_VALIDATED_cmdHandler(FwOpcodeType opCode,   //!< The opcode
-                                  U32 cmdSeq,            //!< The command sequence number
-                                  Svc::BlockState block  //!< Return command status when complete or not
+    void RUN_VALIDATED_cmdHandler(FwOpcodeType opCode,          //!< The opcode
+                                  U32 cmdSeq,                   //!< The command sequence number
+                                  const Svc::BlockState& block  //!< Return command status when complete or not
                                   ) override;
 
     //! Handler for command CANCEL
@@ -684,6 +684,8 @@ class FpySequencer : public FpySequencerComponentBase {
     // otherwise, since construction
     U64 m_statementsDispatched;
 
+    const Fw::String NO_SEQ{"<no seq>"};
+
     // the runtime state of the sequence. encapsulates all state
     // needed to run the sequence.
     // this is distinct from the state of the sequencer. the
@@ -882,7 +884,6 @@ class FpySequencer : public FpySequencerComponentBase {
     DirectiveError op_fsub();
     DirectiveError op_fmul();
     DirectiveError op_fdiv();
-    DirectiveError op_float_floor_div();
     DirectiveError op_fpow();
     DirectiveError op_flog();
     DirectiveError op_fmod();
@@ -895,6 +896,9 @@ class FpySequencer : public FpySequencerComponentBase {
     DirectiveError op_itrunc_64_8();
     DirectiveError op_itrunc_64_16();
     DirectiveError op_itrunc_64_32();
+    DirectiveError op_ffloor();
+    DirectiveError op_iabs();
+    DirectiveError op_fabs();
 
     Signal exit_directiveHandler(const FpySequencer_ExitDirective& directive, DirectiveError& error);
     Signal allocate_directiveHandler(const FpySequencer_AllocateDirective& directive, DirectiveError& error);

@@ -4,21 +4,21 @@
 // \brief  cpp file for CFDP EOF PDU
 // ======================================================================
 
-#include <Svc/Ccsds/CfdpManager/Types/EofPdu.hpp>
 #include <Fw/Types/Assert.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/EofPdu.hpp>
 
 namespace Svc {
 namespace Ccsds {
 namespace Cfdp {
 
 void EofPdu::initialize(PduDirection direction,
-                              Cfdp::Class::T txmMode,
-                              EntityId sourceEid,
-                              TransactionSeq transactionSeq,
-                              EntityId destEid,
-                              ConditionCode conditionCode,
-                              U32 checksum,
-                              FileSize fileSize) {
+                        Cfdp::Class::T txmMode,
+                        EntityId sourceEid,
+                        TransactionSeq transactionSeq,
+                        EntityId destEid,
+                        ConditionCode conditionCode,
+                        U32 checksum,
+                        FileSize fileSize) {
     // Initialize header with PduTypeEnum::END_OF_FILE type
     this->m_header.initialize(PduTypeEnum::END_OF_FILE, direction, txmMode, sourceEid, transactionSeq, destEid);
 
@@ -37,7 +37,7 @@ U32 EofPdu::getBufferSize() const {
     // Condition code: 1 byte
     // Checksum: 4 bytes (U32)
     // File size: sizeof(FileSize) bytes
-    size += sizeof(U8) + sizeof(U8) + sizeof(U32) + sizeof(FileSize);
+    size += static_cast<U32>(sizeof(U8) + sizeof(U8) + sizeof(U32) + sizeof(FileSize));
 
     // Add TLV size
     size += this->m_tlvList.getEncodedSize();
@@ -45,13 +45,11 @@ U32 EofPdu::getBufferSize() const {
     return size;
 }
 
-Fw::SerializeStatus EofPdu::serializeTo(Fw::SerialBufferBase& buffer,
-                                         Fw::Endianness mode) const {
+Fw::SerializeStatus EofPdu::serializeTo(Fw::SerialBufferBase& buffer, Fw::Endianness mode) const {
     return this->toSerialBuffer(buffer);
 }
 
-Fw::SerializeStatus EofPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
-                                             Fw::Endianness mode) {
+Fw::SerializeStatus EofPdu::deserializeFrom(Fw::SerialBufferBase& buffer, Fw::Endianness mode) {
     // Deserialize header first
     Fw::SerializeStatus status = this->m_header.fromSerialBuffer(buffer);
     if (status != Fw::FW_SERIALIZE_OK) {
@@ -59,7 +57,7 @@ Fw::SerializeStatus EofPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
     }
 
     // Validate this is a directive PDU (not file data)
-    if (this->m_header.m_pduType != PDU_TYPE_DIRECTIVE) {
+    if (this->m_header.m_pduType != PduType::PDU_TYPE_DIRECTIVE) {
         return Fw::FW_DESERIALIZE_TYPE_MISMATCH;
     }
 
@@ -69,7 +67,7 @@ Fw::SerializeStatus EofPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
     }
-    if (directiveCode != FILE_DIRECTIVE_END_OF_FILE) {
+    if (directiveCode != static_cast<U8>(FileDirective::FILE_DIRECTIVE_END_OF_FILE)) {
         return Fw::FW_DESERIALIZE_TYPE_MISMATCH;
     }
 
@@ -97,14 +95,15 @@ Fw::SerializeStatus EofPdu::toSerialBuffer(Fw::SerialBufferBase& serialBuffer) c
     }
 
     // Directive code
-    U8 directiveCode = static_cast<U8>(FILE_DIRECTIVE_END_OF_FILE);
+    U8 directiveCode = static_cast<U8>(FileDirective::FILE_DIRECTIVE_END_OF_FILE);
     status = serialBuffer.serializeFrom(directiveCode);
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
     }
 
-    // Condition code
-    U8 conditionCode = static_cast<U8>(this->m_conditionCode);
+    // Condition code (CFDP Blue Book 5.2.6: bits 7-4 = condition code, bits 3-0 = spare/zero)
+    // Note: CFDP uses big-endian bit numbering where bit 0 is MSB
+    U8 conditionCode = static_cast<U8>((static_cast<U8>(this->m_conditionCode) & 0x0F) << 4);  // Place in upper 4 bits
     status = serialBuffer.serializeFrom(conditionCode);
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
@@ -136,13 +135,15 @@ Fw::SerializeStatus EofPdu::fromSerialBuffer(Fw::SerialBufferBase& serialBuffer)
 
     // Directive code already read by union wrapper
 
-    // Condition code
+    // Condition code (CFDP Blue Book 5.2.6: bits 7-4 = condition code, bits 3-0 = spare)
+    // Note: CFDP uses big-endian bit numbering where bit 0 is MSB
     U8 conditionCodeVal;
     Fw::SerializeStatus status = serialBuffer.deserializeTo(conditionCodeVal);
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
     }
-    this->m_conditionCode = static_cast<ConditionCode>(conditionCodeVal);
+    // Extract upper 4 bits (condition code field)
+    this->m_conditionCode = static_cast<ConditionCode>((conditionCodeVal >> 4) & 0x0F);
 
     // Checksum
     status = serialBuffer.deserializeTo(this->m_checksum);

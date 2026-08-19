@@ -98,6 +98,12 @@ class TlmPacketizerTester : public TlmPacketizerGTestBase {
     //! Commanding test: verify SET_LEVEL invalid-level returns VALIDATION_ERROR
     void setLevelInvalidTest(void);
 
+    //! Duplicate channel ID across packets with identical size is accepted
+    void duplicateChannelIdMatchingSizeTest(void);
+
+    //! Duplicate channel ID across packets with conflicting size asserts
+    void duplicateChannelIdConflictingSizeTest(void);
+
     //! Per-packet override test: a configIn override disables one packet/section while
     //! the group-enabled remainder still sends (Phase 2 per-packet control)
     void perPacketOverrideTest(void);

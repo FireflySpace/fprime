@@ -4,21 +4,21 @@
 // \brief  cpp file for CFDP FIN (Finished) PDU
 // ======================================================================
 
-#include <Svc/Ccsds/CfdpManager/Types/FinPdu.hpp>
 #include <Fw/Types/Assert.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/FinPdu.hpp>
 
 namespace Svc {
 namespace Ccsds {
 namespace Cfdp {
 
 void FinPdu::initialize(PduDirection direction,
-                              Cfdp::Class::T txmMode,
-                              EntityId sourceEid,
-                              TransactionSeq transactionSeq,
-                              EntityId destEid,
-                              ConditionCode conditionCode,
-                              FinDeliveryCode deliveryCode,
-                              FinFileStatus fileStatus) {
+                        Cfdp::Class::T txmMode,
+                        EntityId sourceEid,
+                        TransactionSeq transactionSeq,
+                        EntityId destEid,
+                        ConditionCode conditionCode,
+                        FinDeliveryCode deliveryCode,
+                        FinFileStatus fileStatus) {
     // Initialize header with PduTypeEnum::FINISHED type
     this->m_header.initialize(PduTypeEnum::FINISHED, direction, txmMode, sourceEid, transactionSeq, destEid);
 
@@ -35,7 +35,7 @@ U32 FinPdu::getBufferSize() const {
 
     // Directive code: 1 byte
     // Flags: 1 byte (condition code, delivery code, file status all packed)
-    size += sizeof(U8) + sizeof(U8);
+    size += static_cast<U32>(sizeof(U8) + sizeof(U8));
 
     // Add TLV size
     size += this->m_tlvList.getEncodedSize();
@@ -43,13 +43,11 @@ U32 FinPdu::getBufferSize() const {
     return size;
 }
 
-Fw::SerializeStatus FinPdu::serializeTo(Fw::SerialBufferBase& buffer,
-                                         Fw::Endianness mode) const {
+Fw::SerializeStatus FinPdu::serializeTo(Fw::SerialBufferBase& buffer, Fw::Endianness mode) const {
     return this->toSerialBuffer(buffer);
 }
 
-Fw::SerializeStatus FinPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
-                                             Fw::Endianness mode) {
+Fw::SerializeStatus FinPdu::deserializeFrom(Fw::SerialBufferBase& buffer, Fw::Endianness mode) {
     // Deserialize header first
     Fw::SerializeStatus status = this->m_header.fromSerialBuffer(buffer);
     if (status != Fw::FW_SERIALIZE_OK) {
@@ -57,7 +55,7 @@ Fw::SerializeStatus FinPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
     }
 
     // Validate this is a directive PDU (not file data)
-    if (this->m_header.m_pduType != PDU_TYPE_DIRECTIVE) {
+    if (this->m_header.m_pduType != PduType::PDU_TYPE_DIRECTIVE) {
         return Fw::FW_DESERIALIZE_TYPE_MISMATCH;
     }
 
@@ -67,7 +65,7 @@ Fw::SerializeStatus FinPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
     }
-    if (directiveCode != FILE_DIRECTIVE_FIN) {
+    if (directiveCode != static_cast<U8>(FileDirective::FILE_DIRECTIVE_FIN)) {
         return Fw::FW_DESERIALIZE_TYPE_MISMATCH;
     }
 
@@ -95,7 +93,7 @@ Fw::SerializeStatus FinPdu::toSerialBuffer(Fw::SerialBufferBase& serialBuffer) c
     }
 
     // Directive code (FIN = 5)
-    U8 directiveCode = static_cast<U8>(FILE_DIRECTIVE_FIN);
+    U8 directiveCode = static_cast<U8>(FileDirective::FILE_DIRECTIVE_FIN);
     status = serialBuffer.serializeFrom(directiveCode);
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
@@ -107,9 +105,9 @@ Fw::SerializeStatus FinPdu::toSerialBuffer(Fw::SerialBufferBase& serialBuffer) c
     // Bit 2: Delivery code (1 bit)
     // Bits 1-0: File status (2 bits)
     U8 flags = 0;
-    flags |= (static_cast<U8>(this->m_conditionCode) & 0x0F) << 4;  // Bits 7-4
-    flags |= (static_cast<U8>(this->m_deliveryCode) & 0x01) << 2;   // Bit 2
-    flags |= (static_cast<U8>(this->m_fileStatus) & 0x03);          // Bits 1-0
+    flags = static_cast<U8>(flags | static_cast<U8>((static_cast<U8>(this->m_conditionCode) & 0x0FU) << 4));
+    flags = static_cast<U8>(flags | static_cast<U8>((static_cast<U8>(this->m_deliveryCode) & 0x01U) << 2));
+    flags = static_cast<U8>(flags | (static_cast<U8>(this->m_fileStatus) & 0x03U));
 
     status = serialBuffer.serializeFrom(flags);
     if (status != Fw::FW_SERIALIZE_OK) {

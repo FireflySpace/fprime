@@ -3,13 +3,16 @@ module FileHandlingCfdp {
     # ----------------------------------------------------------------------
     # Active Components
     # ----------------------------------------------------------------------
-    instance cfdpManager: Svc.Ccsds.CfdpManager base id FileHandlingCfdpConfig.BASE_ID + 0x00000 \
+    instance cfdpManager: Svc.Ccsds.Cfdp.CfdpManager base id FileHandlingCfdpConfig.BASE_ID + 0x00000 \
         queue size FileHandlingCfdpConfig.QueueSizes.cfdpManager \
         stack size FileHandlingCfdpConfig.StackSizes.cfdpManager \
         priority FileHandlingCfdpConfig.Priorities.cfdpManager \
     {
         phase Fpp.ToCpp.Phases.configComponents """
-        FileHandlingCfdp::cfdpManager.configure();
+        FileHandlingCfdp::cfdpManager.configure(FileHandlingCfdp::Allocation::memAllocator);
+        """
+        phase Fpp.ToCpp.Phases.tearDownComponents """
+        FileHandlingCfdp::cfdpManager.cleanup();
         """
     }
 

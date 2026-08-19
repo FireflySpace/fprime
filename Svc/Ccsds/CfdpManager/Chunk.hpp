@@ -32,12 +32,10 @@
 #ifndef CFDP_CHUNK_HPP
 #define CFDP_CHUNK_HPP
 
-#include <functional>
-
 #include <Fw/FPrimeBasicTypes.hpp>
 
-#include <config/FileSizeAliasAc.hpp>
 #include <Svc/Ccsds/CfdpManager/Types/StatusEnumAc.hpp>
+#include <config/FileSizeAliasAc.hpp>
 
 namespace Svc {
 namespace Ccsds {
@@ -48,8 +46,7 @@ using ChunkIdx = U16;
 /**
  * @brief Pairs an offset with a size to identify a specific piece of a file
  */
-struct Chunk
-{
+struct Chunk {
     FileSize offset; /**< \brief The start offset of the chunk within the file */
     FileSize size;   /**< \brief The size of the chunk */
 };
@@ -61,14 +58,10 @@ struct Chunk
  * @param b Second chunk offset
  * @return the larger FileSize value
  */
-static inline FileSize CfdpChunkMax(FileSize a, FileSize b)
-{
-    if (a > b)
-    {
+static inline FileSize CfdpChunkMax(FileSize a, FileSize b) {
+    if (a > b) {
         return a;
-    }
-    else
-    {
+    } else {
         return b;
     }
 }
@@ -76,10 +69,10 @@ static inline FileSize CfdpChunkMax(FileSize a, FileSize b)
 /**
  * @brief Callback type for gap computation
  *
- * std::function-based callback used by CfdpChunkList::computeGaps().
+ * Function pointer callback used by CfdpChunkList::computeGaps().
  * The callback receives the gap chunk and an opaque context pointer.
  */
-using GapComputeCallback = std::function<void(const Chunk* chunk, void* opaque)>;
+using GapComputeCallback = void (*)(const Chunk* chunk, void* opaque);
 
 /**
  * @brief C++ class encapsulation of CFDP chunk list operations
@@ -174,11 +167,7 @@ class CfdpChunkList {
      *
      * @returns Number of gaps computed (may be less than maxGaps if fewer gaps exist)
      */
-    U32 computeGaps(ChunkIdx maxGaps,
-                    FileSize total,
-                    FileSize start,
-                    const GapComputeCallback& callback,
-                    void* opaque) const;
+    U32 computeGaps(ChunkIdx maxGaps, FileSize total, FileSize start, GapComputeCallback callback, void* opaque) const;
 
     /**
      * @brief Get the current number of chunks in the list
@@ -284,9 +273,9 @@ class CfdpChunkList {
     // Private Member Variables
     // ----------------------------------------------------------------------
 
-    ChunkIdx m_count;       //!< Current number of chunks in the list
-    ChunkIdx m_maxChunks;   //!< Maximum number of chunks allowed
-    Chunk* m_chunks;        //!< Pointer to pre-allocated chunk array (not owned)
+    ChunkIdx m_count;      //!< Current number of chunks in the list
+    ChunkIdx m_maxChunks;  //!< Maximum number of chunks allowed
+    Chunk* m_chunks;       //!< Pointer to pre-allocated chunk array (not owned)
 };
 
 }  // namespace Cfdp

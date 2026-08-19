@@ -9,8 +9,8 @@
 
 #include <Fw/FPrimeBasicTypes.hpp>
 #include <Fw/Types/SerialBuffer.hpp>
-#include <config/EntityIdAliasAc.hpp>
 #include <config/CfdpCfg.hpp>
+#include <config/EntityIdAliasAc.hpp>
 
 namespace Svc {
 namespace Ccsds {
@@ -18,7 +18,7 @@ namespace Cfdp {
 
 // CFDP TLV Types
 // Blue Book section 5.4, table 5-3
-enum TlvType : U8 {
+enum class TlvType : U8 {
     TLV_TYPE_FILESTORE_REQUEST = 0,       // Filestore request
     TLV_TYPE_FILESTORE_RESPONSE = 1,      // Filestore response
     TLV_TYPE_MESSAGE_TO_USER = 2,         // Message to user
@@ -31,10 +31,10 @@ enum TlvType : U8 {
 class TlvData {
   private:
     union {
-        EntityId m_eid;      // Valid when type=ENTITY_ID
-        U8 m_rawData[256];       // Valid for other types (max 255 bytes + null term)
+        EntityId m_eid;     // Valid when type=ENTITY_ID
+        U8 m_rawData[256];  // Valid for other types (max 255 bytes + null term)
     };
-    U8 m_dataLength;             // Actual length of data
+    U8 m_dataLength;  // Actual length of data
 
   public:
     TlvData();
@@ -88,7 +88,7 @@ class Tlv {
 class TlvList {
   private:
     U8 m_numTlv;
-    Tlv m_tlvs[CFDP_MAX_TLV];
+    Tlv m_tlvs[MaxTlv];
 
   public:
     TlvList();

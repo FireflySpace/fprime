@@ -35,21 +35,22 @@
 #define CFDP_ENGINE_HPP
 
 #include <Fw/FPrimeBasicTypes.hpp>
+#include <Fw/Types/MemAllocator.hpp>
 
-#include <Svc/Ccsds/CfdpManager/Types/Types.hpp>
 #include <Svc/Ccsds/CfdpManager/Transaction.hpp>
-#include <Svc/Ccsds/CfdpManager/Types/PduBase.hpp>
 #include <Svc/Ccsds/CfdpManager/Types/ChannelTelemetrySerializableAc.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/PduBase.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/Types.hpp>
 
 // Forward declarations - do NOT include CfdpManager.hpp to avoid circular dependency
 namespace Svc {
 namespace Ccsds {
-    class CfdpManager;  // CfdpManager stays in Svc::Ccsds
-    namespace Cfdp {
-        class Channel;  // Channel is in Svc::Ccsds::Cfdp
-    }
+class CfdpManager;  // CfdpManager stays in Svc::Ccsds
+namespace Cfdp {
+class Channel;  // Channel is in Svc::Ccsds::Cfdp
 }
-}
+}  // namespace Ccsds
+}  // namespace Svc
 
 namespace Svc {
 namespace Ccsds {
@@ -58,21 +59,19 @@ namespace Cfdp {
 /**
  * @brief Structure for use with the Channel::cycleTx() function
  */
-struct CycleTxArgs
-{
-    Channel *chan;    /**< \brief channel object */
-    int          ran_one; /**< \brief should be set to 1 if a transaction was cycled */
+struct CycleTxArgs {
+    Channel* chan; /**< \brief channel object */
+    I32 ran_one;   /**< \brief should be set to 1 if a transaction was cycled */
 };
 
 /**
  * @brief Structure for use with the Channel::doTick() function
  */
-struct TickArgs
-{
-    Channel *chan;                                /**< \brief channel object */
-    void (Transaction::*fn)(int *);               /**< \brief member function pointer */
-    bool early_exit;                                  /**< \brief early exit result */
-    int  cont;                                        /**< \brief if 1, then re-traverse the list */
+struct TickArgs {
+    Channel* chan;                 /**< \brief channel object */
+    void (Transaction::*fn)(I32*); /**< \brief member function pointer */
+    bool early_exit;               /**< \brief early exit result */
+    I32 cont;                      /**< \brief if 1, then re-traverse the list */
 };
 
 /**
@@ -102,8 +101,11 @@ class Engine {
 
     /**
      * @brief Destroy the Engine object
+     *
+     * @note virtual because Engine has a virtual member (sendMd); this allows
+     *       safe destruction of the unit-test subclass through an Engine*.
      */
-    ~Engine();
+    virtual ~Engine();
 
     // ----------------------------------------------------------------------
     // Public interface
@@ -111,8 +113,10 @@ class Engine {
 
     /**
      * @brief Initialize the CFDP engine
+     * @param allocator Memory allocator for dynamic allocation
+     * @param memId Memory allocation identifier
      */
-    void init();
+    void init(Fw::MemAllocator& allocator, FwEnumStoreType memId);
 
     /**
      * @brief Cycle the engine once per scheduler call
@@ -142,10 +146,14 @@ class Engine {
      * @param initType       Transaction initiation method (command or port)
      * @returns Cfdp::Status::SUCCESS on success, error code otherwise
      */
-    Status::T txFile(const Fw::String& src, const Fw::String& dst,
-                         Class::T cfdp_class, Keep::T keep,
-                         U8 chan_num, U8 priority, EntityId dest_id,
-                         TransactionInitType initType = INIT_BY_COMMAND);
+    Status::T txFile(const Fw::String& src,
+                     const Fw::String& dst,
+                     Class::T cfdp_class,
+                     Keep::T keep,
+                     U8 chan_num,
+                     U8 priority,
+                     EntityId dest_id,
+                     TransactionInitType initType = TransactionInitType::INIT_BY_COMMAND);
 
     /**
      * @brief Begin transmit of a directory
@@ -159,9 +167,13 @@ class Engine {
      * @param dest_id    Entity ID of remote receiver
      * @returns Cfdp::Status::SUCCESS on success, error code otherwise
      */
-    Status::T playbackDir(const Fw::String& src, const Fw::String& dst,
-                              Class::T cfdp_class, Keep::T keep,
-                              U8 chan, U8 priority, EntityId dest_id);
+    Status::T playbackDir(const Fw::String& src,
+                          const Fw::String& dst,
+                          Class::T cfdp_class,
+                          Keep::T keep,
+                          U8 chan,
+                          U8 priority,
+                          EntityId dest_id);
 
     /**
      * @brief Start polling a directory
@@ -176,9 +188,14 @@ class Engine {
      * @param intervalSec Time between directory playbacks in seconds
      * @returns Cfdp::Status::SUCCESS on success, error code otherwise
      */
-    Status::T startPollDir(U8 chanId, U8 pollId, const Fw::String& srcDir,
-                               const Fw::String& dstDir, Class::T cfdp_class,
-                               U8 priority, EntityId destEid, U32 intervalSec);
+    Status::T startPollDir(U8 chanId,
+                           U8 pollId,
+                           const Fw::String& srcDir,
+                           const Fw::String& dstDir,
+                           Class::T cfdp_class,
+                           U8 priority,
+                           EntityId destEid,
+                           U32 intervalSec);
 
     /**
      * @brief Stop polling a directory
@@ -208,7 +225,10 @@ class Engine {
      * @param action Suspend or resume action
      * @return Status::SUCCESS if transaction was found and suspended/resumed, Status::ERROR otherwise
      */
-    Status::T setSuspendResumeTransaction(U8 channelId, TransactionSeq transactionSeq, EntityId entityId, SuspendResume::T action);
+    Status::T setSuspendResumeTransaction(U8 channelId,
+                                          TransactionSeq transactionSeq,
+                                          EntityId entityId,
+                                          SuspendResume::T action);
 
     /**
      * @brief Cancel a transaction with graceful close-out
@@ -251,7 +271,7 @@ class Engine {
      * @param txn  Pointer to the transaction object
      * @param keep_history Whether the transaction info should be preserved in history
      */
-    void finishTransaction(Transaction *txn, bool keep_history);
+    void finishTransaction(Transaction* txn, bool keep_history);
 
     /**
      * @brief Helper function to store transaction status code only
@@ -262,7 +282,7 @@ class Engine {
      * @param txn  Pointer to the transaction object
      * @param txn_stat Status Code value to set within transaction
      */
-    void setTxnStatus(Transaction *txn, TxnStatus txn_stat);
+    void setTxnStatus(Transaction* txn, TxnStatus txn_stat);
 
     /**
      * @brief Arm the ACK timer for a transaction
@@ -272,7 +292,7 @@ class Engine {
      *
      * @param txn  Pointer to the transaction object
      */
-    void armAckTimer(Transaction *txn);
+    void armAckTimer(Transaction* txn);
 
     /**
      * @brief Arm the inactivity timer for a transaction
@@ -282,7 +302,7 @@ class Engine {
      *
      * @param txn  Pointer to the transaction object
      */
-    void armInactTimer(Transaction *txn);
+    void armInactTimer(Transaction* txn);
 
     /**
      * @brief Create, encode, and send a Metadata PDU
@@ -297,8 +317,12 @@ class Engine {
      * @retval Cfdp::Status::SUCCESS on success.
      * @retval Cfdp::Status::SEND_PDU_NO_BUF_AVAIL_ERROR if message buffer cannot be obtained.
      * @retval Cfdp::Status::ERROR if serialization fails.
+     *
+     * @note virtual solely to allow a unit-test override that forces the
+     *       metadata-send failure path (TxSendMetadataFailed), which is
+     *       otherwise unreachable with a well-formed MetadataPdu.
      */
-    Status::T sendMd(Transaction *txn);
+    virtual Status::T sendMd(Transaction* txn);
 
     /**
      * @brief Encode and send a File Data PDU
@@ -315,7 +339,7 @@ class Engine {
      * @retval Cfdp::Status::SEND_PDU_NO_BUF_AVAIL_ERROR if message buffer cannot be obtained.
      * @retval Cfdp::Status::ERROR if serialization fails.
      */
-    Status::T sendFd(Transaction *txn, FileDataPdu& fdPdu);
+    Status::T sendFd(Transaction* txn, FileDataPdu& fdPdu);
 
     /**
      * @brief Create, encode, and send an EOF (End of File) PDU
@@ -331,7 +355,7 @@ class Engine {
      * @retval Cfdp::Status::SEND_PDU_NO_BUF_AVAIL_ERROR if message buffer cannot be obtained.
      * @retval Cfdp::Status::ERROR if serialization fails.
      */
-    Status::T sendEof(Transaction *txn);
+    Status::T sendEof(Transaction* txn);
 
     /**
      * @brief Create, encode, and send an ACK (Acknowledgment) PDU
@@ -357,8 +381,12 @@ class Engine {
      * @retval Cfdp::Status::SEND_PDU_NO_BUF_AVAIL_ERROR if message buffer cannot be obtained.
      * @retval Cfdp::Status::ERROR if serialization fails.
      */
-    Status::T sendAck(Transaction *txn, AckTxnStatus ts, FileDirective dir_code,
-                          ConditionCode cc, EntityId peer_eid, TransactionSeq tsn);
+    Status::T sendAck(Transaction* txn,
+                      AckTxnStatus ts,
+                      FileDirective dir_code,
+                      ConditionCode cc,
+                      EntityId peer_eid,
+                      TransactionSeq tsn);
 
     /**
      * @brief Create, encode, and send a FIN (Finished) PDU
@@ -377,8 +405,7 @@ class Engine {
      * @retval Cfdp::Status::SEND_PDU_NO_BUF_AVAIL_ERROR if message buffer cannot be obtained.
      * @retval Cfdp::Status::ERROR if serialization fails.
      */
-    Status::T sendFin(Transaction *txn, FinDeliveryCode dc, FinFileStatus fs,
-                          ConditionCode cc);
+    Status::T sendFin(Transaction* txn, FinDeliveryCode dc, FinFileStatus fs, ConditionCode cc);
 
     /**
      * @brief Encode and send a NAK (Negative Acknowledgment) PDU
@@ -397,7 +424,7 @@ class Engine {
      * @retval Cfdp::Status::SEND_PDU_NO_BUF_AVAIL_ERROR if message buffer cannot be obtained.
      * @retval Cfdp::Status::ERROR if serialization fails.
      */
-    Status::T sendNak(Transaction *txn, NakPdu& nakPdu);
+    Status::T sendNak(Transaction* txn, NakPdu& nakPdu);
 
     /**
      * @brief Handle receipt of metadata PDU
@@ -408,7 +435,7 @@ class Engine {
      * @param txn  Pointer to the transaction state
      * @param pdu  The metadata PDU
      */
-    void recvMd(Transaction *txn, const MetadataPdu& pdu);
+    void recvMd(Transaction* txn, const MetadataPdu& pdu);
 
     /**
      * @brief Unpack a file data PDU from a received message
@@ -424,7 +451,7 @@ class Engine {
      * @retval Cfdp::Status::ERROR for general errors
      * @retval Cfdp::Status::SHORT_PDU_ERROR PDU too short
      */
-    Status::T recvFd(Transaction *txn, const FileDataPdu& pdu);
+    Status::T recvFd(Transaction* txn, const FileDataPdu& pdu);
 
     /**
      * @brief Unpack an EOF PDU from a received message
@@ -439,7 +466,7 @@ class Engine {
      * @retval Cfdp::Status::SUCCESS on success
      * @retval Cfdp::Status::SHORT_PDU_ERROR on error
      */
-    Status::T recvEof(Transaction *txn, const EofPdu& pdu);
+    Status::T recvEof(Transaction* txn, const EofPdu& pdu);
 
     /**
      * @brief Unpack an FIN PDU from a received message
@@ -454,7 +481,7 @@ class Engine {
      * @retval Cfdp::Status::SUCCESS on success
      * @retval Cfdp::Status::SHORT_PDU_ERROR on error
      */
-    Status::T recvFin(Transaction *txn, const FinPdu& pdu);
+    Status::T recvFin(Transaction* txn, const FinPdu& pdu);
 
     /**
      * @brief Unpack a NAK PDU from a received message
@@ -469,7 +496,7 @@ class Engine {
      * @retval Cfdp::Status::SUCCESS on success
      * @retval Cfdp::Status::SHORT_PDU_ERROR on error
      */
-    Status::T recvNak(Transaction *txn, const NakPdu& pdu);
+    Status::T recvNak(Transaction* txn, const NakPdu& pdu);
 
     /**
      * @brief Initiate a file transfer transaction
@@ -481,8 +508,7 @@ class Engine {
      * @param priority     Priority of transfer
      * @param dest_id      Destination entity ID
      */
-    void txFileInitiate(Transaction *txn, Class::T cfdp_class, Keep::T keep, U8 chan,
-                        U8 priority, EntityId dest_id);
+    void txFileInitiate(Transaction* txn, Class::T cfdp_class, Keep::T keep, U8 chan, U8 priority, EntityId dest_id);
 
     /**
      * @brief Initiate playback of a directory
@@ -497,8 +523,14 @@ class Engine {
      * @param dest_id      Destination entity ID
      * @returns SUCCESS if initiated, error otherwise
      */
-    Status::T playbackDirInitiate(Playback *pb, const Fw::String& src_filename, const Fw::String& dst_filename,
-                                      Class::T cfdp_class, Keep::T keep, U8 chan, U8 priority, EntityId dest_id);
+    Status::T playbackDirInitiate(Playback* pb,
+                                  const Fw::String& src_filename,
+                                  const Fw::String& dst_filename,
+                                  Class::T cfdp_class,
+                                  Keep::T keep,
+                                  U8 chan,
+                                  U8 priority,
+                                  EntityId dest_id);
 
     /**
      * @brief Dispatch TX state machine for a transaction
@@ -507,13 +539,13 @@ class Engine {
      *
      * @param txn  Pointer to the transaction state
      */
-    void dispatchTx(Transaction *txn);
+    void dispatchTx(Transaction* txn);
 
     /**
      * @brief Get reference to channel telemetry for Channel class
      *
      * Allows Channel to access telemetry without exposing m_manager
-     * 
+     *
      * @param channelId Channel ID
      * @return Reference to channel telemetry structure
      */
@@ -525,13 +557,19 @@ class Engine {
     // ----------------------------------------------------------------------
 
     //!< Parent component for event and telemetry methods
-    CfdpManager* m_manager;       
+    CfdpManager* m_manager;
 
     //! Channel data structures
     Channel* m_channels[Cfdp::NumChannels];
 
     //! Sequence number tracker for outgoing transactions
     TransactionSeq m_seqNum;
+
+    //! Memory allocator for Channel cleanup
+    Fw::MemAllocator* m_allocator;
+
+    //! Memory allocation identifier
+    FwEnumStoreType m_allocatorId;
 
     // Note: Transactions, histories, and chunks are now owned by each Channel
 
@@ -543,18 +581,11 @@ class Engine {
     // Transaction Management
 
     /**
-     * @brief Send an end of transaction packet
-     *
-     * @param txn  Pointer to the transaction object
-     */
-    void sendEotPkt(Transaction *txn);
-
-    /**
      * @brief Cancels a transaction
      *
      * @param txn  Pointer to the transaction state
      */
-    void cancelTransaction(Transaction *txn);
+    void cancelTransaction(Transaction* txn);
 
     /**
      * @brief Helper function to start a new RX transaction
@@ -564,7 +595,7 @@ class Engine {
      * receive direction, most fields are unknown until the MD is received,
      * and thus are left in their initial state here (generally 0).
      *
-     * If there is no capacity for another RX transaction, this returns NULL.
+     * If there is no capacity for another RX transaction, this returns nullptr.
      *
      * @param chan_num  CFDP channel number
      * @returns Pointer to new transaction
@@ -587,10 +618,42 @@ class Engine {
      * @param pdu PDU object to serialize (any type derived from PduBase)
      * @return Status::SUCCESS on success, Status::ERROR on failure
      */
-    Status::T serializeAndSendPdu(
-        Transaction* txn,
-        PduBase& pdu
-    );
+    Status::T serializeAndSendPdu(Transaction* txn, PduBase& pdu);
+
+    /**
+     * @brief Serialize and send a PDU using only a channel context
+     *
+     * Identical to serializeAndSendPdu() but keyed on a Channel rather than a
+     * Transaction, so it can send PDUs that are not associated with a live
+     * transaction (e.g. a stateless FIN-ACK for a transaction that has already
+     * completed and been recycled).
+     *
+     * @param chan Channel context (provides buffer pool and channel id)
+     * @param pdu  PDU object to serialize (any type derived from PduBase)
+     * @return Status::SUCCESS on success, Status::ERROR on failure
+     */
+    Status::T serializeAndSendPduOnChannel(Channel& chan, PduBase& pdu);
+
+    /**
+     * @brief Acknowledge a FIN without a live transaction
+     *
+     * Builds and sends an ACK(FIN) PDU directly from the fields of a received
+     * FIN, for the case where a retransmitted FIN arrives for a downlink
+     * transaction this entity sourced but that has already completed and been
+     * recycled. Per CFDP the sender must still acknowledge such a FIN.
+     *
+     * @param chan       Channel the FIN arrived on
+     * @param tsn        Transaction sequence number from the FIN header
+     * @param finSrcEid  FIN source EID (this local entity, the file sender)
+     * @param finDstEid  FIN destination EID (the peer/receiver)
+     * @param cc         Condition code echoed from the FIN
+     * @return Status::SUCCESS on success, error status otherwise
+     */
+    Status::T sendFinAckStateless(Channel& chan,
+                                  TransactionSeq tsn,
+                                  EntityId finSrcEid,
+                                  EntityId finDstEid,
+                                  ConditionCode cc);
 
     // PDU Operations - Receive
 
@@ -603,7 +666,7 @@ class Engine {
      * @param txn    Pointer to the transaction state
      * @param buffer Buffer containing the PDU to process
      */
-    void recvDrop(Transaction *txn, const Fw::Buffer& buffer);
+    void recvDrop(Transaction* txn, const Fw::Buffer& buffer);
 
     /**
      * @brief Receive state function during holdover period
@@ -617,7 +680,7 @@ class Engine {
      * @param txn    Pointer to the transaction state
      * @param buffer Buffer containing the PDU to process
      */
-    void recvHold(Transaction *txn, const Fw::Buffer& buffer);
+    void recvHold(Transaction* txn, const Fw::Buffer& buffer);
 
     /**
      * @brief Receive state function to process new rx transaction
@@ -630,8 +693,9 @@ class Engine {
      *
      * @param txn    Pointer to the transaction state
      * @param buffer Buffer containing the PDU to process
+     * @return true if state changed and re-dispatch is needed, false otherwise
      */
-    void recvInit(Transaction *txn, const Fw::Buffer& buffer);
+    bool recvInit(Transaction* txn, const Fw::Buffer& buffer);
 
     // Dispatch
 
@@ -644,7 +708,7 @@ class Engine {
      * @param txn    Pointer to the transaction state
      * @param buffer Buffer containing the PDU to dispatch
      */
-    void dispatchRecv(Transaction *txn, const Fw::Buffer& buffer);
+    void dispatchRecv(Transaction* txn, const Fw::Buffer& buffer);
 
     // Channel Processing
 
@@ -656,7 +720,7 @@ class Engine {
      *
      * @retval true/false
      */
-    bool isPollingDir(const char *src_file, U8 chan_num);
+    bool isPollingDir(const Fw::StringBase& src_file, U8 chan_num);
 
     /**
      * @brief Remove/Move file after transaction
@@ -665,7 +729,7 @@ class Engine {
      *
      * @param txn  Pointer to the transaction object
      */
-    void handleNotKeepFile(Transaction *txn);
+    void handleNotKeepFile(Transaction* txn);
 
     // Friend declarations for testing
     friend class CfdpManagerTester;

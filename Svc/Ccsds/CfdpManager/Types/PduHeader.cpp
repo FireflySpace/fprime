@@ -4,28 +4,28 @@
 // \brief  cpp file for CFDP PDU Header
 // ======================================================================
 
-#include <Svc/Ccsds/CfdpManager/Types/PduHeader.hpp>
-#include <Svc/Ccsds/CfdpManager/Types/Types.hpp>
 #include <Fw/Types/Assert.hpp>
 #include <Fw/Types/StringUtils.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/PduHeader.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/Types.hpp>
 
 namespace Svc {
 namespace Ccsds {
 namespace Cfdp {
 
 void PduHeader::initialize(PduTypeEnum::T type,
-                              PduDirection direction,
-                              Cfdp::Class::T txmMode,
-                              EntityId sourceEid,
-                              TransactionSeq transactionSeq,
-                              EntityId destEid) {
+                           PduDirection direction,
+                           Cfdp::Class::T txmMode,
+                           EntityId sourceEid,
+                           TransactionSeq transactionSeq,
+                           EntityId destEid) {
     this->m_type = type;
     this->m_version = 1;  // CFDP version is always 1
-    this->m_pduType = (type == PduTypeEnum::FILE_DATA) ? PDU_TYPE_FILE_DATA : PDU_TYPE_DIRECTIVE;
+    this->m_pduType = (type == PduTypeEnum::FILE_DATA) ? PduType::PDU_TYPE_FILE_DATA : PduType::PDU_TYPE_DIRECTIVE;
     this->m_direction = direction;
     this->m_class = txmMode;
-    this->m_crcFlag = CRC_NOT_PRESENT;  // CRC not currently supported
-    this->m_largeFileFlag = LARGE_FILE_32_BIT;  // 32-bit file sizes
+    this->m_crcFlag = CrcFlag::CRC_NOT_PRESENT;                // CRC not currently supported
+    this->m_largeFileFlag = LargeFileFlag::LARGE_FILE_32_BIT;  // 32-bit file sizes
     this->m_segmentationControl = 0;
     this->m_segmentMetadataFlag = 0;
     this->m_pduDataLength = 0;  // To be set later
@@ -36,7 +36,7 @@ void PduHeader::initialize(PduTypeEnum::T type,
 
 // Helper function to calculate minimum bytes needed to encode a value
 U8 PduHeader::getValueEncodedSize(U64 value) {
-    U8  minSize;
+    U8 minSize;
     U64 limit = 0x100;
 
     for (minSize = 1; minSize < 8 && value >= limit; ++minSize) {
@@ -82,13 +82,12 @@ U32 PduHeader::getBufferSize() const {
     U32 size = 4;
 
     // Variable-size entity IDs and transaction sequence number based on actual values
-    U8 eidSize = getValueEncodedSize(this->m_sourceEid > this->m_destEid ?
-                                      this->m_sourceEid : this->m_destEid);
+    U8 eidSize = getValueEncodedSize(this->m_sourceEid > this->m_destEid ? this->m_sourceEid : this->m_destEid);
     U8 tsnSize = getValueEncodedSize(this->m_transactionSeq);
 
-    size += eidSize;      // source EID
-    size += tsnSize;      // transaction sequence number
-    size += eidSize;      // destination EID
+    size += eidSize;  // source EID
+    size += tsnSize;  // transaction sequence number
+    size += eidSize;  // destination EID
 
     return size;
 }
@@ -97,8 +96,7 @@ Fw::SerializeStatus PduHeader::toSerialBuffer(Fw::SerialBufferBase& serialBuffer
     Fw::SerializeStatus status;
 
     // Variable-size entity IDs and transaction sequence number based on actual values
-    U8 eidSize = getValueEncodedSize(this->m_sourceEid > this->m_destEid ?
-                                      this->m_sourceEid : this->m_destEid);
+    U8 eidSize = getValueEncodedSize(this->m_sourceEid > this->m_destEid ? this->m_sourceEid : this->m_destEid);
     U8 tsnSize = getValueEncodedSize(this->m_transactionSeq);
 
     // Byte 0: flags
@@ -109,12 +107,12 @@ Fw::SerializeStatus PduHeader::toSerialBuffer(Fw::SerialBufferBase& serialBuffer
     // bit 1: crc_flag (0=not present, 1=present)
     // bit 0: large_file_flag (0=32-bit, 1=64-bit)
     U8 flags = 0;
-    flags |= (this->m_version & 0x07) << 5;
-    flags |= (this->m_pduType & 0x01) << 4;
-    flags |= (this->m_direction & 0x01) << 3;
-    flags |= (this->m_class & 0x01) << 2;
-    flags |= (this->m_crcFlag & 0x01) << 1;
-    flags |= (this->m_largeFileFlag & 0x01);
+    flags = static_cast<U8>(flags | static_cast<U8>((this->m_version & 0x07U) << 5));
+    flags = static_cast<U8>(flags | static_cast<U8>((static_cast<U8>(this->m_pduType) & 0x01U) << 4));
+    flags = static_cast<U8>(flags | static_cast<U8>((static_cast<U8>(this->m_direction) & 0x01U) << 3));
+    flags = static_cast<U8>(flags | static_cast<U8>((this->m_class & 0x01U) << 2));
+    flags = static_cast<U8>(flags | static_cast<U8>((static_cast<U8>(this->m_crcFlag) & 0x01U) << 1));
+    flags = static_cast<U8>(flags | (static_cast<U8>(this->m_largeFileFlag) & 0x01U));
 
     status = serialBuffer.serializeFrom(flags);
     if (status != Fw::FW_SERIALIZE_OK) {
@@ -133,10 +131,10 @@ Fw::SerializeStatus PduHeader::toSerialBuffer(Fw::SerialBufferBase& serialBuffer
     // bit 3: segment_metadata_flag
     // bits 2-0: tsn_length - 1 (3 bits)
     U8 eidTsnLengths = 0;
-    eidTsnLengths |= static_cast<U8>((this->m_segmentationControl & 0x01) << 7);
-    eidTsnLengths |= static_cast<U8>(((eidSize - 1) & 0x07) << 4);
-    eidTsnLengths |= static_cast<U8>((this->m_segmentMetadataFlag & 0x01) << 3);
-    eidTsnLengths |= static_cast<U8>((tsnSize - 1) & 0x07);
+    eidTsnLengths = static_cast<U8>(eidTsnLengths | static_cast<U8>((this->m_segmentationControl & 0x01U) << 7));
+    eidTsnLengths = static_cast<U8>(eidTsnLengths | static_cast<U8>(((eidSize - 1U) & 0x07U) << 4));
+    eidTsnLengths = static_cast<U8>(eidTsnLengths | static_cast<U8>((this->m_segmentMetadataFlag & 0x01U) << 3));
+    eidTsnLengths = static_cast<U8>(eidTsnLengths | ((tsnSize - 1U) & 0x07U));
 
     status = serialBuffer.serializeFrom(eidTsnLengths);
     if (status != Fw::FW_SERIALIZE_OK) {
@@ -193,9 +191,9 @@ Fw::SerializeStatus PduHeader::fromSerialBuffer(Fw::SerialBufferBase& serialBuff
     }
 
     this->m_segmentationControl = (eidTsnLengths >> 7) & 0x01;
-    U8 eidSize = ((eidTsnLengths >> 4) & 0x07) + 1;
+    U8 eidSize = static_cast<U8>(((eidTsnLengths >> 4) & 0x07) + 1);
     this->m_segmentMetadataFlag = (eidTsnLengths >> 3) & 0x01;
-    U8 tsnSize = (eidTsnLengths & 0x07) + 1;
+    U8 tsnSize = static_cast<U8>((eidTsnLengths & 0x07) + 1);
 
     // Validate that the sizes are within bounds (1-8 bytes)
     FW_ASSERT(eidSize >= 1 && eidSize <= 8, static_cast<FwAssertArgType>(eidSize));
@@ -219,7 +217,7 @@ Fw::SerializeStatus PduHeader::fromSerialBuffer(Fw::SerialBufferBase& serialBuff
 
     // Don't set m_type yet - it will be determined by the directive code for directive PDUs
     // or set to FILE_DATA for file data PDUs
-    if (this->m_pduType == PDU_TYPE_FILE_DATA) {
+    if (this->m_pduType == PduType::PDU_TYPE_FILE_DATA) {
         this->m_type = PduTypeEnum::FILE_DATA;
     } else {
         // For directive PDUs, type will be set when directive code is read
@@ -230,57 +228,56 @@ Fw::SerializeStatus PduHeader::fromSerialBuffer(Fw::SerialBufferBase& serialBuff
 }
 
 PduTypeEnum::T peekPduType(const Fw::Buffer& buffer) {
-    PduTypeEnum::T pduTypeEnum;
+    PduTypeEnum::T pduTypeEnum = PduTypeEnum::NONE;
 
     // Check minimum size for a PDU header
-    if (buffer.getSize() < PduHeader::MIN_HEADERSIZE) {
-        return PduTypeEnum::NONE;
-    }
+    if (buffer.getSize() >= PduHeader::MIN_HEADERSIZE) {
+        const U8* data = buffer.getData();
+        FW_ASSERT(data != nullptr);
 
-    const U8* data = buffer.getData();
-    FW_ASSERT(data != nullptr);
+        // Byte 0: flags
+        // Bit 4 is PDU type: 0 = FILE_DATA, 1 = FILE_DIRECTIVE
+        U8 flags = data[0];
+        PduType pduType = static_cast<PduType>((flags >> 4) & 0x01);
 
-    // Byte 0: flags
-    // Bit 4 is PDU type: 0 = FILE_DATA, 1 = FILE_DIRECTIVE
-    U8 flags = data[0];
-    PduType pduType = static_cast<PduType>((flags >> 4) & 0x01);
+        if (pduType == PduType::PDU_TYPE_FILE_DATA) {
+            pduTypeEnum = PduTypeEnum::FILE_DATA;
+        } else {
+            // For directive PDUs, we need to read the directive code
+            // Parse byte 3 to get EID and TSN lengths
+            U8 eidTsnLengths = data[3];
+            U8 eidSize = static_cast<U8>(((eidTsnLengths >> 4) & 0x07) + 1);  // Bits 6-4: EID length - 1
+            U8 tsnSize = static_cast<U8>((eidTsnLengths & 0x07) + 1);         // Bits 2-0: TSN length - 1
 
-    if (pduType == PDU_TYPE_FILE_DATA) {
-        pduTypeEnum = PduTypeEnum::FILE_DATA;
-    }
-    else
-    {
-        // For directive PDUs, we need to read the directive code
-        // Parse byte 3 to get EID and TSN lengths
-        U8 eidTsnLengths = data[3];
-        U8 eidSize = ((eidTsnLengths >> 4) & 0x07) + 1;  // Bits 6-4: EID length - 1
-        U8 tsnSize = (eidTsnLengths & 0x07) + 1;         // Bits 2-0: TSN length - 1
+            // Calculate offset to directive code: 4 (fixed header) + eidSize + tsnSize + eidSize
+            U32 directiveCodeOffset = 4 + (2 * eidSize) + tsnSize;
 
-        // Calculate offset to directive code: 4 (fixed header) + eidSize + tsnSize + eidSize
-        U32 directiveCodeOffset = 4 + (2 * eidSize) + tsnSize;
+            // Validate offset is within buffer bounds before reading
+            if (directiveCodeOffset < buffer.getSize()) {
+                // Read directive code
+                U8 directiveCode = data[directiveCodeOffset];
 
-        // Read directive code
-        U8 directiveCode = data[directiveCodeOffset];
-
-        // Map directive code to PduTypeEnum
-        switch (directiveCode) {
-            case FILE_DIRECTIVE_METADATA:
-                pduTypeEnum = PduTypeEnum::METADATA;
-                break;
-            case FILE_DIRECTIVE_END_OF_FILE:
-                pduTypeEnum = PduTypeEnum::END_OF_FILE;
-                break;
-            case FILE_DIRECTIVE_FIN:
-                pduTypeEnum = PduTypeEnum::FINISHED;
-                break;
-            case FILE_DIRECTIVE_ACK:
-                pduTypeEnum = PduTypeEnum::ACKNOWLEDGMENT;
-                break;
-            case FILE_DIRECTIVE_NAK:
-                pduTypeEnum = PduTypeEnum::NEGATIVE_ACK;
-                break;
-            default:
-                pduTypeEnum = PduTypeEnum::NONE;  // Unknown directive code
+                // Map directive code to PduTypeEnum
+                switch (directiveCode) {
+                    case static_cast<U8>(FileDirective::FILE_DIRECTIVE_METADATA):
+                        pduTypeEnum = PduTypeEnum::METADATA;
+                        break;
+                    case static_cast<U8>(FileDirective::FILE_DIRECTIVE_END_OF_FILE):
+                        pduTypeEnum = PduTypeEnum::END_OF_FILE;
+                        break;
+                    case static_cast<U8>(FileDirective::FILE_DIRECTIVE_FIN):
+                        pduTypeEnum = PduTypeEnum::FINISHED;
+                        break;
+                    case static_cast<U8>(FileDirective::FILE_DIRECTIVE_ACK):
+                        pduTypeEnum = PduTypeEnum::ACKNOWLEDGMENT;
+                        break;
+                    case static_cast<U8>(FileDirective::FILE_DIRECTIVE_NAK):
+                        pduTypeEnum = PduTypeEnum::NEGATIVE_ACK;
+                        break;
+                    default:
+                        pduTypeEnum = PduTypeEnum::NONE;  // Unknown directive code
+                }
+            }
         }
     }
     return pduTypeEnum;

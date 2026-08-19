@@ -4,20 +4,20 @@
 // \brief  cpp file for CFDP NAK (Negative Acknowledge) PDU
 // ======================================================================
 
-#include <Svc/Ccsds/CfdpManager/Types/NakPdu.hpp>
 #include <Fw/Types/Assert.hpp>
+#include <Svc/Ccsds/CfdpManager/Types/NakPdu.hpp>
 
 namespace Svc {
 namespace Ccsds {
 namespace Cfdp {
 
 void NakPdu::initialize(PduDirection direction,
-                              Cfdp::Class::T txmMode,
-                              EntityId sourceEid,
-                              TransactionSeq transactionSeq,
-                              EntityId destEid,
-                              FileSize scopeStart,
-                              FileSize scopeEnd) {
+                        Cfdp::Class::T txmMode,
+                        EntityId sourceEid,
+                        TransactionSeq transactionSeq,
+                        EntityId destEid,
+                        FileSize scopeStart,
+                        FileSize scopeEnd) {
     // Initialize header with PduTypeEnum::NEGATIVE_ACK type
     this->m_header.initialize(PduTypeEnum::NEGATIVE_ACK, direction, txmMode, sourceEid, transactionSeq, destEid);
 
@@ -27,7 +27,7 @@ void NakPdu::initialize(PduDirection direction,
 }
 
 bool NakPdu::addSegment(FileSize offsetStart, FileSize offsetEnd) {
-    if (this->m_numSegments >= CFDP_NAK_MAX_SEGMENTS) {
+    if (this->m_numSegments >= NakMaxSegments) {
         return false;
     }
     this->m_segments[this->m_numSegments].offsetStart = offsetStart;
@@ -43,7 +43,7 @@ void NakPdu::clearSegments() {
 U32 NakPdu::getBufferSize() const {
     U32 size = this->m_header.getBufferSize();
 
-    // Directive code: 1 byte (FILE_DIRECTIVE_NAK)
+    // Directive code: 1 byte (FileDirective::FILE_DIRECTIVE_NAK)
     // Scope start: sizeof(FileSize) bytes
     // Scope end: sizeof(FileSize) bytes
     // Segment requests: m_numSegments * (2 * sizeof(FileSize)) bytes
@@ -53,13 +53,11 @@ U32 NakPdu::getBufferSize() const {
     return size;
 }
 
-Fw::SerializeStatus NakPdu::serializeTo(Fw::SerialBufferBase& buffer,
-                                         Fw::Endianness mode) const {
+Fw::SerializeStatus NakPdu::serializeTo(Fw::SerialBufferBase& buffer, Fw::Endianness mode) const {
     return this->toSerialBuffer(buffer);
 }
 
-Fw::SerializeStatus NakPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
-                                             Fw::Endianness mode) {
+Fw::SerializeStatus NakPdu::deserializeFrom(Fw::SerialBufferBase& buffer, Fw::Endianness mode) {
     // Deserialize header first
     Fw::SerializeStatus status = this->m_header.fromSerialBuffer(buffer);
     if (status != Fw::FW_SERIALIZE_OK) {
@@ -67,7 +65,7 @@ Fw::SerializeStatus NakPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
     }
 
     // Validate this is a directive PDU (not file data)
-    if (this->m_header.m_pduType != PDU_TYPE_DIRECTIVE) {
+    if (this->m_header.m_pduType != PduType::PDU_TYPE_DIRECTIVE) {
         return Fw::FW_DESERIALIZE_TYPE_MISMATCH;
     }
 
@@ -77,7 +75,7 @@ Fw::SerializeStatus NakPdu::deserializeFrom(Fw::SerialBufferBase& buffer,
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
     }
-    if (directiveCode != FILE_DIRECTIVE_NAK) {
+    if (directiveCode != static_cast<U8>(FileDirective::FILE_DIRECTIVE_NAK)) {
         return Fw::FW_DESERIALIZE_TYPE_MISMATCH;
     }
 
@@ -105,7 +103,7 @@ Fw::SerializeStatus NakPdu::toSerialBuffer(Fw::SerialBufferBase& serialBuffer) c
     }
 
     // Directive code (NAK = 8)
-    U8 directiveCodeByte = static_cast<U8>(FILE_DIRECTIVE_NAK);
+    U8 directiveCodeByte = static_cast<U8>(FileDirective::FILE_DIRECTIVE_NAK);
     status = serialBuffer.serializeFrom(directiveCodeByte);
     if (status != Fw::FW_SERIALIZE_OK) {
         return status;
@@ -161,13 +159,13 @@ Fw::SerializeStatus NakPdu::fromSerialBuffer(Fw::SerialBufferBase& serialBuffer)
     // Calculate number of segment requests from remaining buffer size
     // Each segment is 2 * sizeof(FileSize) bytes
     Fw::Serializable::SizeType remainingBytes = serialBuffer.getDeserializeSizeLeft();
-    U32 segmentSize = sizeof(FileSize) + sizeof(FileSize);
+    U32 segmentSize = static_cast<U32>(sizeof(FileSize) + sizeof(FileSize));
     U32 numSegsCalculated = static_cast<U32>(remainingBytes / segmentSize);
     this->m_numSegments = static_cast<U8>(numSegsCalculated);
 
     // Limit to max segments
-    if (this->m_numSegments > CFDP_NAK_MAX_SEGMENTS) {
-        this->m_numSegments = CFDP_NAK_MAX_SEGMENTS;
+    if (this->m_numSegments > NakMaxSegments) {
+        this->m_numSegments = NakMaxSegments;
     }
 
     // Deserialize segment requests

@@ -32,19 +32,29 @@ endfunction(dictionary_add_global_target)
 function(dictionary_add_deployment_target MODULE TARGET SOURCES DEPENDENCIES FULL_DEPENDENCIES)
     run_ac_set("${MODULE}" "autocoder/fpp")
 
-    # Create deployment level target and remove the module from the list of dependencies
-    add_custom_target("${MODULE}_${TARGET}" DEPENDS ${AUTOCODER_GENERATED_OTHER})
+    # Remove the module from the list of dependencies
     list(REMOVE_ITEM DEPENDENCIES "${MODULE}")
+    set(DICTIONARY_INSTALLED_FILES "")
 
     # Create a custom target with _dictionary suffix that depends on the generated files
     if(AUTOCODER_GENERATED_OTHER)
         # Install the files as a component. This is done here so it is output to the deployment directory
         install(FILES ${AUTOCODER_GENERATED_OTHER} DESTINATION ${TOOLCHAIN_NAME}/${MODULE}/dict COMPONENT "${MODULE}_${TARGET}")
-        add_custom_command(TARGET "${MODULE}_${TARGET}" POST_BUILD COMMAND "${CMAKE_COMMAND}"
+        # Drive the install from OUTPUT (not POST_BUILD, which always re-runs) so it is skipped until an input changes
+        set(INSTALLED_FILES "")
+        foreach(DICTIONARY_FILE IN LISTS AUTOCODER_GENERATED_OTHER)
+            get_filename_component(DICTIONARY_FILE_NAME "${DICTIONARY_FILE}" NAME)
+            list(APPEND INSTALLED_FILES "${FPRIME_INSTALL_DEST}/${TOOLCHAIN_NAME}/${MODULE}/dict/${DICTIONARY_FILE_NAME}")
+        endforeach()
+        # touch after install: whole-second vs nanosecond mtime
+        add_custom_command(OUTPUT ${INSTALLED_FILES} COMMAND "${CMAKE_COMMAND}"
             -DCMAKE_INSTALL_COMPONENT=${MODULE}_${TARGET}
             -DFPRIME_INSTALL_DEST=${FPRIME_INSTALL_DEST}
             -DFPRIME_BUILD_DIR=${CMAKE_BINARY_DIR}
-            -P ${FPRIME_FRAMEWORK_PATH}/cmake/target/fprime_install.cmake)
+            -P ${FPRIME_FRAMEWORK_PATH}/cmake/target/fprime_install.cmake
+            COMMAND "${CMAKE_COMMAND}" -E touch_nocreate ${INSTALLED_FILES}
+            DEPENDS ${AUTOCODER_GENERATED_OTHER})
+        list(APPEND DICTIONARY_INSTALLED_FILES ${INSTALLED_FILES})
     endif()
 
     # Loop through all recursive dependencies and find dictionary targets
@@ -54,15 +64,25 @@ function(dictionary_add_deployment_target MODULE TARGET SOURCES DEPENDENCIES FUL
             fprime_cmake_ASSERT("No dictionary files defined for ${DEPENDENCY}" DICTIONARY_FILES)
             # Install the files as a component. This is done here so it is output to the deployment directory
             install(FILES ${DICTIONARY_FILES} DESTINATION ${TOOLCHAIN_NAME}/${MODULE}/dict COMPONENT "${MODULE}_${DEPENDENCY}_${TARGET}")
-            add_custom_command(TARGET "${MODULE}_${TARGET}" POST_BUILD COMMAND "${CMAKE_COMMAND}"
+            set(INSTALLED_FILES "")
+            foreach(DICTIONARY_FILE IN LISTS DICTIONARY_FILES)
+                get_filename_component(DICTIONARY_FILE_NAME "${DICTIONARY_FILE}" NAME)
+                list(APPEND INSTALLED_FILES "${FPRIME_INSTALL_DEST}/${TOOLCHAIN_NAME}/${MODULE}/dict/${DICTIONARY_FILE_NAME}")
+            endforeach()
+            # touch after install: whole-second vs nanosecond mtime
+            add_custom_command(OUTPUT ${INSTALLED_FILES} COMMAND "${CMAKE_COMMAND}"
                 -DCMAKE_INSTALL_COMPONENT=${MODULE}_${DEPENDENCY}_${TARGET}
                 -DFPRIME_INSTALL_DEST=${FPRIME_INSTALL_DEST}
                 -DFPRIME_BUILD_DIR=${CMAKE_BINARY_DIR}
-                -P ${FPRIME_FRAMEWORK_PATH}/cmake/target/fprime_install.cmake)
-            # Make deployment depend on the module dictionary target
-            add_dependencies("${MODULE}_${TARGET}" "${DEPENDENCY}_${TARGET}")
+                -P ${FPRIME_FRAMEWORK_PATH}/cmake/target/fprime_install.cmake
+                COMMAND "${CMAKE_COMMAND}" -E touch_nocreate ${INSTALLED_FILES}
+                DEPENDS ${DICTIONARY_FILES})
+            list(APPEND DICTIONARY_INSTALLED_FILES ${INSTALLED_FILES})
         endif()
     endforeach()
+
+    # Create deployment level target depending on the installed dictionaries
+    add_custom_target("${MODULE}_${TARGET}" DEPENDS ${DICTIONARY_INSTALLED_FILES})
 
     # Make the deployment and dictionary targets depend on the deployment dictionary target
     add_dependencies("${MODULE}" "${MODULE}_${TARGET}")
