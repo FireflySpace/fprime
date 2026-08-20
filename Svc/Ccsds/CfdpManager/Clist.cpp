@@ -148,6 +148,7 @@ void CfdpCListTraverse(CListNode* start, CListFunc fn, void* context) {
 
     if (node) {
         U32 i;
+        bool stopped = false;
         for (i = 0; i < maxIterations && !last; ++i) {
             /* set node_next in case callback removes this node from the list */
             node_next = node->next;
@@ -155,6 +156,9 @@ void CfdpCListTraverse(CListNode* start, CListFunc fn, void* context) {
                 last = true;
             }
             if (!CfdpCListTraverseStatusIsContinue(fn(node, context))) {
+                /* callback requested an early stop; this is a normal exit, not a
+                 * runaway loop, so it must not trip the runaway assert below. */
+                stopped = true;
                 break;
             }
             /* list traversal is robust against an item deleting itself during traversal,
@@ -166,7 +170,10 @@ void CfdpCListTraverse(CListNode* start, CListFunc fn, void* context) {
             }
             node = node_next;
         }
-        FW_ASSERT(last, static_cast<FwAssertArgType>(i));
+        /* Safety bound: the loop must terminate either by reaching the terminal
+         * node (last) or by an early stop from the callback (stopped). Running to
+         * maxIterations without either indicates list corruption / an infinite loop. */
+        FW_ASSERT(last || stopped, static_cast<FwAssertArgType>(i));
     }
 }
 
@@ -184,6 +191,7 @@ void CfdpCListTraverseR(CListNode* end, CListFunc fn, void* context) {
         if (node) {
             end = node;
             U32 i;
+            bool stopped = false;
 
             for (i = 0; i < maxIterations && !last; ++i) {
                 /* set node_next in case callback removes this node from the list */
@@ -193,6 +201,9 @@ void CfdpCListTraverseR(CListNode* end, CListFunc fn, void* context) {
                 }
 
                 if (!CfdpCListTraverseStatusIsContinue(fn(node, context))) {
+                    /* callback requested an early stop; this is a normal exit, not a
+                     * runaway loop, so it must not trip the runaway assert below. */
+                    stopped = true;
                     break;
                 }
 
@@ -205,7 +216,10 @@ void CfdpCListTraverseR(CListNode* end, CListFunc fn, void* context) {
                 }
                 node = node_next;
             }
-            FW_ASSERT(last, static_cast<FwAssertArgType>(i));
+            /* Safety bound: the loop must terminate either by reaching the terminal
+             * node (last) or by an early stop from the callback (stopped). Running to
+             * maxIterations without either indicates list corruption / an infinite loop. */
+            FW_ASSERT(last || stopped, static_cast<FwAssertArgType>(i));
         }
     }
 }
