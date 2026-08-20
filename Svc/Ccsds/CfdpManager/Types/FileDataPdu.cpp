@@ -38,13 +38,13 @@ U32 FileDataPdu::getBufferSize() const {
     return size;
 }
 
-U32 FileDataPdu::getMaxFileDataSize() {
+FileSize FileDataPdu::getMaxFileDataSize() {
     U32 size = this->m_header.getBufferSize();
 
     // Offset field width tracks the configured FileSize type (see CfdpCfg.fpp)
     size += static_cast<U32>(sizeof(FileSize));
 
-    return MaxPduSize - size;
+    return static_cast<FileSize>(MaxPduSize - size);
 }
 
 Fw::SerializeStatus FileDataPdu::toBuffer(Fw::Buffer& buffer) const {

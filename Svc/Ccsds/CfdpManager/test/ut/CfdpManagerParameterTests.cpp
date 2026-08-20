@@ -50,7 +50,7 @@ void CfdpManagerTester::testParamLocalEidSetGet() {
 
 void CfdpManagerTester::testParamOutgoingFileChunkSizeDefault() {
     Fw::ParamValid valid;
-    const U32 value = this->component.paramGet_OutgoingFileChunkSize(valid);
+    const FileSize value = this->component.paramGet_OutgoingFileChunkSize(valid);
     ASSERT_EQ(Fw::ParamValid::DEFAULT, valid.e) << "Loaded default should flag DEFAULT";
     ASSERT_EQ(992u, value);
 }
@@ -69,7 +69,7 @@ void CfdpManagerTester::testParamOutgoingFileChunkSizeSetGet() {
 
 void CfdpManagerTester::testParamRxCrcCalcBytesPerCycleDefault() {
     Fw::ParamValid valid;
-    const U32 value = this->component.paramGet_RxCrcCalcBytesPerCycle(valid);
+    const FileSize value = this->component.paramGet_RxCrcCalcBytesPerCycle(valid);
     ASSERT_EQ(Fw::ParamValid::DEFAULT, valid.e) << "Loaded default should flag DEFAULT";
     ASSERT_EQ(65536u, value);
 }

@@ -583,21 +583,21 @@ EntityId CfdpManager::getLocalEidParam(void) {
     return localEid;
 }
 
-U32 CfdpManager::getOutgoingFileChunkSizeParam(void) {
+FileSize CfdpManager::getOutgoingFileChunkSizeParam(void) {
     Fw::ParamValid valid;
 
     // Check for coding errors as all CFDP parameters must have a default
-    U32 chunkSize = this->paramGet_OutgoingFileChunkSize(valid);
+    FileSize chunkSize = this->paramGet_OutgoingFileChunkSize(valid);
     FW_ASSERT(valid != Fw::ParamValid::INVALID && valid != Fw::ParamValid::UNINIT,
               static_cast<FwAssertArgType>(valid.e));
 
     return chunkSize;
 }
-U32 CfdpManager::getRxCrcCalcBytesPerCycleParam(void) {
+FileSize CfdpManager::getRxCrcCalcBytesPerCycleParam(void) {
     Fw::ParamValid valid;
 
     // Check for coding errors as all CFDP parameters must have a default
-    U32 rxSize = this->paramGet_RxCrcCalcBytesPerCycle(valid);
+    FileSize rxSize = this->paramGet_RxCrcCalcBytesPerCycle(valid);
     FW_ASSERT(valid != Fw::ParamValid::INVALID && valid != Fw::ParamValid::UNINIT,
               static_cast<FwAssertArgType>(valid.e));
 

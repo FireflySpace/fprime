@@ -72,7 +72,7 @@ class FileDataPdu : public PduBase {
 
     //! Calculate maximum file data payload size
     //! @return Maximum number of data bytes that can fit in a File Data PDU
-    U32 getMaxFileDataSize();
+    FileSize getMaxFileDataSize();
 
   private:
     //! Initialize this FileDataPdu from a SerialBuffer

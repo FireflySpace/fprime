@@ -347,7 +347,7 @@ Status::T Transaction::sSendFileData(FileSize foffs, FileSize bytes_to_read, U8 
     Cfdp::PduDirection direction = PduDirection::DIRECTION_TOWARD_RECEIVER;
 
     // Calculate maximum data size we can send, accounting for PDU overhead
-    U32 maxDataCapacity = fdPdu.getMaxFileDataSize();
+    FileSize maxDataCapacity = fdPdu.getMaxFileDataSize();
 
     // Limited by: bytes_to_read, outgoing_file_chunk_size, and maxDataCapacity
     FileSize outgoing_file_chunk_size = this->m_cfdpManager->getOutgoingFileChunkSizeParam();
@@ -408,7 +408,7 @@ Status::T Transaction::sSendFileData(FileSize foffs, FileSize bytes_to_read, U8 
             this->m_crc.update(fileDataBuffer, static_cast<U32>(foffs), static_cast<U32>(actual_bytes));
         }
 
-        *bytes_processed = static_cast<U32>(actual_bytes);
+        *bytes_processed = static_cast<FileSize>(actual_bytes);
     }
 
     return status;

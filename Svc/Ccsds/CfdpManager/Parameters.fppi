@@ -3,11 +3,11 @@ param LocalEid: Cfdp.EntityId \
     default 42
 
 @ Maximum number of bytes to put into a file PDU
-param OutgoingFileChunkSize: U32 \
+param OutgoingFileChunkSize: Cfdp.FileSize \
     default 992
 
 @ The maximum number of received bytes to calculate a CRC for in a single scheduler cycle
-param RxCrcCalcBytesPerCycle: U32 \
+param RxCrcCalcBytesPerCycle: Cfdp.FileSize \
     default 65536
 
 @ Extra scheduler cycles a pending terminal send (EOF or FIN-ACK) is retried after the
