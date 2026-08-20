@@ -405,6 +405,51 @@ TEST(ClistHelper, TraverseReverseEarlyExit) {
     EXPECT_EQ(1, count);
 }
 
+TEST(ClistHelper, TraverseForwardEarlyExitMultiNode) {
+    // Regression for the CfdpCListTraverse early-exit assert bug.
+    // With more than one node, a callback that stops on a non-terminal node
+    // must halt traversal cleanly. The buggy FW_ASSERT(last) at the tail of
+    // the traversal loop fires whenever the break happens before the terminal
+    // node is reached, crashing FSW (Clist.cpp assert, arg == 0).
+    CListNode a, b, c;
+    CfdpCListInitNode(&a);
+    CfdpCListInitNode(&b);
+    CfdpCListInitNode(&c);
+    CListNode* head = nullptr;
+    CfdpCListInsertBack(&head, &a);
+    CfdpCListInsertBack(&head, &b);
+    CfdpCListInsertBack(&head, &c);
+
+    int count = 0;
+    CfdpCListTraverse(head, exitFirstCb, &count);
+    // Forward traversal visits 'a' first, exits immediately: exactly one visit,
+    // no assert.
+    EXPECT_EQ(1, count);
+}
+
+TEST(ClistHelper, TraverseReverseEarlyExitMultiNode) {
+    // Regression for the CfdpCListTraverseR early-exit assert bug reported from
+    // the field: with >1 transaction in a queue, insertSortPrio's reverse
+    // priority search (prioritySearchCallback -> CLIST_TRAVERSE_EXIT) stops on a
+    // non-terminal node and the trailing FW_ASSERT(last) aborts FSW
+    // (Clist.cpp:208 assert, arg == 0). Directory playback with >1 file and the
+    // suspend/resume retry path both drive this insert.
+    CListNode a, b, c;
+    CfdpCListInitNode(&a);
+    CfdpCListInitNode(&b);
+    CfdpCListInitNode(&c);
+    CListNode* head = nullptr;
+    CfdpCListInsertBack(&head, &a);
+    CfdpCListInsertBack(&head, &b);
+    CfdpCListInsertBack(&head, &c);
+
+    int count = 0;
+    CfdpCListTraverseR(head, exitFirstCb, &count);
+    // Reverse traversal visits the back node ('c') first, exits immediately:
+    // exactly one visit, no assert.
+    EXPECT_EQ(1, count);
+}
+
 TEST(ClistHelper, TraverseNullStartIsNoOp) {
     int count = 0;
     CfdpCListTraverse(nullptr, countCb, &count);
