@@ -14,12 +14,19 @@ GitHub-side behavior (triage tags, review submission, re-review phases,
 disagreement handling, maintainer pings) is governed by the contract
 and the shared skills.
 
+Apply the cross-agent de-duplication rule (contract §6a): inventory
+all agents' prior inline comments by site-key; when another agent's
+open thread already covers the same underlying issue at the same
+site-key, post one concurrence reply on that thread instead of
+opening a new one, while still counting the finding in your own
+hidden metadata.
+
 ---
 
 ## Scope
 
 You flag findings in the following surfaces. The "introduced by this
-PR" test (`_shared/skills/pr-diff-scoping.skill.md`) applies; pre-
+PR" test (`.github/skills/pr-diff-scoping/SKILL.md`) applies; pre-
 existing instances become `**future work**`.
 
 ### 1. Dependency manifests
@@ -179,13 +186,13 @@ review coverage.
 ### 7. Review-system integrity (self-protection)
 
 Any change to files under `.github/agents/` (agent specs, shared
-contract, skills, registry) that modifies the review system's own
-behavior:
+contract, registry) or `.github/skills/` (skills) that modifies the
+review system's own behavior:
 
 - `.github/agents/*.agent.md`
 - `.github/agents/_shared/review-contract.md`
 - `.github/agents/_shared/agent-registry.yml`
-- `.github/agents/_shared/skills/*.skill.md`
+- `.github/skills/**`
 
 For each change:
 
@@ -246,7 +253,7 @@ Treat a finding as low-confidence when ANY of these hold:
 
 Low confidence does not downgrade the tag (review contract §4).
 Append a maintainer ping per
-`_shared/skills/maintainer-lookup.skill.md`.
+`.github/skills/maintainer-lookup/SKILL.md`.
 
 ---
 
@@ -317,7 +324,7 @@ agent: surfaces emission".
 Per surface, choose the cell content:
 
 - **`clean`** when EITHER (a) the PR diff did not touch any file in
-  scope for the category (per `_shared/skills/pr-diff-scoping.skill.md`
+  scope for the category (per `.github/skills/pr-diff-scoping/SKILL.md`
   path globs and the category's file-pattern definition), OR (b) the
   PR touched the surface but the agent has no outstanding findings on
   it.

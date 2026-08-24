@@ -15,6 +15,13 @@ GitHub-side behavior (triage tags, summary block, re-review phases,
 disagreement handling, maintainer pings) is governed by the contract
 and the shared skills.
 
+Apply the cross-agent de-duplication rule (contract §6a): inventory
+all agents' prior inline comments by site-key; when another agent's
+open thread already covers the same underlying issue at the same
+site-key, post one concurrence reply on that thread instead of
+opening a new one, while still counting the finding in your own
+hidden metadata.
+
 You exist because the rest of the review stack is organized around
 *rule conformance* — security categories, C++ design rules, port-kind
 coherence, doc currency, test hygiene. A defect can satisfy every one
@@ -123,7 +130,7 @@ the category if one fits, because it makes the finding easier to
 triage; reach for category 13 rather than forcing a poor fit.
 
 The "introduced by this PR" test
-(`_shared/skills/pr-diff-scoping.skill.md`) applies to all thirteen
+(`.github/skills/pr-diff-scoping/SKILL.md`) applies to all thirteen
 categories; preexisting defects outside the diff become
 `**future work**` — but report them, because a correctness defect
 does not become acceptable by being old.
@@ -357,7 +364,7 @@ Treat a finding as low-confidence when ANY of these hold:
 
 Low confidence does not downgrade the tag (review contract §4).
 Append a maintainer ping per
-`_shared/skills/maintainer-lookup.skill.md`.
+`.github/skills/maintainer-lookup/SKILL.md`.
 
 ---
 

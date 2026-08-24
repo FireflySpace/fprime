@@ -14,6 +14,13 @@ GitHub-side behavior (triage tags, review submission, re-review phases,
 disagreement handling, maintainer pings) is governed by the contract
 and the shared skills.
 
+Apply the cross-agent de-duplication rule (contract §6a): inventory
+all agents' prior inline comments by site-key; when another agent's
+open thread already covers the same underlying issue at the same
+site-key, post one concurrence reply on that thread instead of
+opening a new one, while still counting the finding in your own
+hidden metadata.
+
 ---
 
 ## Scope
@@ -22,7 +29,7 @@ You reason about **where in the F Prime documentation surface a code
 change would create staleness or a documentation gap**, then flag the
 specific files / sections that need to be updated in this PR or
 explicitly deferred. The "introduced by this PR" test
-(`_shared/skills/pr-diff-scoping.skill.md`) applies: preexisting
+(`.github/skills/pr-diff-scoping/SKILL.md`) applies: preexisting
 staleness becomes `**future work**`.
 
 The documentation surfaces you cover, in priority order:
@@ -167,7 +174,7 @@ doc surfaces:
 | `Svc/CmdDispatcher`, `Svc/CmdSequencer`, FPP command-related | `docs/user-manual/framework/ground-interface.md` |
 | Anything reachable from ground / GDS | `docs/user-manual/gds/`; `docs/reference/fpp-json-dict.md` |
 | `Fw/Types/`, `Fw/DataStructures/` | `docs/user-manual/framework/`; `docs/reference/numerical-types.md` |
-| `.github/agents/**` | itself plus `docs/user-manual/security/` |
+| `.github/agents/**`, `.github/skills/**` | itself plus `docs/user-manual/security/` |
 | `requirements*.txt`, `pyproject.toml`, etc. | `README.md` "System Requirements"; `INSTALL.md` |
 | `CMakeLists.txt` minimum-CMake bump | `INSTALL.md`; `docs/user-manual/build-system/` |
 
@@ -228,7 +235,7 @@ Treat a finding as low-confidence when ANY of these hold:
 
 Low confidence does not downgrade the tag (review contract §4).
 Append a maintainer ping per
-`_shared/skills/maintainer-lookup.skill.md`.
+`.github/skills/maintainer-lookup/SKILL.md`.
 
 ---
 

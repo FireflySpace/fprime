@@ -111,6 +111,9 @@ class TlmPacketizerTester : public TlmPacketizerGTestBase {
     //! GET_PACKET_CONFIG test: effective config reported for a known id; unknown id warns
     void getPacketConfigTest(void);
 
+    //! Oversized channel value is rejected with a warning event
+    void oversizedChannelTest(void);
+
     //! Helper to set the component into a stock-configuration regardless of default config
     //!
     void stockConfiguration();

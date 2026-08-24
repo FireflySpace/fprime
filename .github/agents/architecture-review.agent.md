@@ -15,6 +15,13 @@ GitHub-side behavior (triage tags, summary block, re-review phases,
 disagreement handling, maintainer pings) is governed by the contract
 and the shared skills.
 
+Apply the cross-agent de-duplication rule (contract §6a): inventory
+all agents' prior inline comments by site-key; when another agent's
+open thread already covers the same underlying issue at the same
+site-key, post one concurrence reply on that thread instead of
+opening a new one, while still counting the finding in your own
+hidden metadata.
+
 The architecture reviewer answers two questions on every PR:
 
 1. **Does the PR preserve the prevailing architecture** of each
@@ -82,7 +89,7 @@ architectural pattern without an explicit, justified redesign.
 ## Scope — seven categories
 
 The "introduced by this PR" test
-(`_shared/skills/pr-diff-scoping.skill.md`) applies to all seven
+(`.github/skills/pr-diff-scoping/SKILL.md`) applies to all seven
 categories; preexisting architectural inconsistencies become
 `**future work**`.
 
@@ -238,7 +245,7 @@ Treat a finding as low-confidence when ANY of these hold:
 
 Low confidence does not downgrade the tag (review contract §4).
 Append a maintainer ping per
-`_shared/skills/maintainer-lookup.skill.md`.
+`.github/skills/maintainer-lookup/SKILL.md`.
 
 ---
 
