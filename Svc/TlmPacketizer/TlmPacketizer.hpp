@@ -167,7 +167,7 @@ class TlmPacketizer final : public TlmPacketizerComponentBase, public Fw::ParamE
     void GET_PACKET_CONFIG_cmdHandler(FwOpcodeType opCode,           //!< The opcode
                                       U32 cmdSeq,                    //!< The command sequence number
                                       U32 packetId,                  //!< Packet identifier
-                                      Svc::TelemetrySection section  //!< Section to query
+                                      const Svc::TelemetrySection& section  //!< Section to query
                                       ) override;
 
     // number of packets to fill
