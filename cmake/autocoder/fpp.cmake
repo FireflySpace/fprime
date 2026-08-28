@@ -69,7 +69,7 @@ endfunction(locate_fpp_tools)
 # `AC_INPUT_FILE` potential input to the autocoder
 ####
 function(fpp_is_supported AC_INPUT_FILE)
-    autocoder_support_by_suffix(".fpp" "${AC_INPUT_FILE}" TRUE)
+    autocoder_support_by_suffix(".fpp" "${AC_INPUT_FILE}")
 endfunction(fpp_is_supported)
 
 ####
@@ -243,9 +243,10 @@ function(fpp_setup_autocode MODULE_NAME AC_INPUT_FILES)
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/fpp-import-list" "${FPP_IMPORTS}")
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/fpp-source-list" "${AC_INPUT_FILES}")
 
-    # Mark included files (.fppi) as regenerators like their .fpp parents
-    foreach (INCLUDED_FILE IN LISTS FILE_DEPENDENCIES)
-        requires_regeneration("${INCLUDED_FILE}")
+    # Gate reconfigure on the graph cache (write-on-change), not the sources
+    foreach (CACHE_FILE IN LISTS FPP_DEPEND_CACHE_FILES)
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+            "${CMAKE_CURRENT_BINARY_DIR}/fpp-cache/${CACHE_FILE}")
     endforeach()
 
     # Add in steps for CPP generation

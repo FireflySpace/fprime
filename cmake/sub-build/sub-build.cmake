@@ -19,6 +19,9 @@ if (DEFINED FPRIME_SUB_BUILD_TARGETS AND DEFINED FPRIME_BINARY_DIR)
     set(FPRIME_IS_SUB_BUILD TRUE CACHE INTERNAL "Whether this is a sub-build or not" FORCE)
 else()
     set(FPRIME_IS_SUB_BUILD FALSE CACHE INTERNAL "Whether this is a sub-build or not" FORCE)
+    if (NOT DEFINED FPRIME_BINARY_DIR)
+        set(FPRIME_BINARY_DIR "${CMAKE_BINARY_DIR}" CACHE INTERNAL "Base (outer) build cache directory")
+    endif()
 endif()
 
 ####
