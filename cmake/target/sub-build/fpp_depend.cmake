@@ -85,15 +85,14 @@ function(fpp_depend_add_module_target MODULE TARGET SOURCES_UNUSED DEPENDENCIES)
                 "-u" "${LOCAL_CACHE}/unittest.txt"
                 "-a"
                 ${FPP_SOURCES}
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different ${OUTPUT_FILES} "${DELIVERY_CACHE}"
             DEPENDS
                 fpp_locs
                 "${FPRIME_BINARY_DIR}/locs.fpp"
                 ${FPP_SOURCES}
                 ${PREVIOUS_CLOSURE}
         )
-        add_custom_target("${TARGET}_${MODULE}" DEPENDS ${OUTPUT_FILES}
-            COMMAND "${CMAKE_COMMAND}" -E copy_if_different ${OUTPUT_FILES} "${DELIVERY_CACHE}"
-        )
+        add_custom_target("${TARGET}_${MODULE}" DEPENDS ${OUTPUT_FILES})
     else()
         add_custom_target("${TARGET}_${MODULE}")
     endif()
