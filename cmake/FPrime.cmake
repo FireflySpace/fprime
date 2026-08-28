@@ -110,8 +110,7 @@ macro(fprime_setup_standard_targets)
     # This is done for efficiency to not load all the below files
     if (NOT DEFINED FPRIME_SUB_BUILD_TARGETS)
         # FPP locations must come at the front of the list, then build
-        register_fprime_target(target/sub-build/fpp_locs)
-        register_fprime_target(target/sub-build/fpp_depend)
+        register_fprime_target(target/refresh_info_cache)
         register_fprime_target(target/build)
         register_fprime_build_autocoder(autocoder/fpp OFF)
         register_fprime_target(target/version)
