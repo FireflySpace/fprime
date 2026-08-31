@@ -8,6 +8,7 @@ include_guard()
 include(utilities)
 include(autocoder/helpers)
 set(FPRIME_FPP_TO_DICT_WRAPPER "${CMAKE_CURRENT_LIST_DIR}/scripts/fpp_to_dict_wrapper.py" CACHE INTERNAL "Internal path to fpp_to_dict_wrapper.py" FORCE)
+set(FPRIME_ATOMIC_CODEGEN "${CMAKE_CURRENT_LIST_DIR}/scripts/atomic_codegen.py" CACHE INTERNAL "Internal path to atomic_codegen.py" FORCE)
 
 autocoder_setup_for_multiple_sources()
 ####
@@ -252,7 +253,8 @@ function(fpp_setup_autocode MODULE_NAME AC_INPUT_FILES)
     if (GENERATED_CPP)
         add_custom_command(
                 OUTPUT ${GENERATED_CPP}
-                COMMAND ${FPP_TO_CPP} "-d" "${FPP_OUTPUT_DIRECTORY}" ${FPP_IMPORT_FLAGS} ${AC_INPUT_FILES}
+                COMMAND ${FPRIME_ATOMIC_CODEGEN} "${FPP_OUTPUT_DIRECTORY}" "--"
+                    ${FPP_TO_CPP} "-d" "${FPP_OUTPUT_DIRECTORY}" ${FPP_IMPORT_FLAGS} ${AC_INPUT_FILES}
                     "-p" "${FPP_LOCATIONS_COMMA_SEP}"
                 DEPENDS ${FILE_DEPENDENCIES}
         )
