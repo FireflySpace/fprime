@@ -243,10 +243,9 @@ function(fpp_setup_autocode MODULE_NAME AC_INPUT_FILES)
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/fpp-import-list" "${FPP_IMPORTS}")
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/fpp-source-list" "${AC_INPUT_FILES}")
 
-    # Gate reconfigure on the graph cache (write-on-change), not the sources
-    foreach (CACHE_FILE IN LISTS FPP_DEPEND_CACHE_FILES)
+    foreach (CACHE_FILE IN ITEMS stdout direct missing framework generated include unittest)
         set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-            "${CMAKE_CURRENT_BINARY_DIR}/fpp-cache/${CACHE_FILE}")
+            "${CMAKE_CURRENT_BINARY_DIR}/fpp-cache/${CACHE_FILE}.txt")
     endforeach()
 
     # Add in steps for CPP generation
