@@ -6,7 +6,6 @@
 ####
 include_guard()
 set(FPP__INTERNAL_LOCATE_DEFS_HELPER "${PYTHON}" "${CMAKE_CURRENT_LIST_DIR}/../tools/redirector.py" CACHE INTERNAL "Internal helper for fpp-depend to locate definitions" FORCE)
-set(FPP_DEPEND_CACHE_FILES stdout.txt direct.txt missing.txt framework.txt generated.txt include.txt unittest.txt CACHE INTERNAL "fpp-depend cache output file names" FORCE)
 ####
 # Function `fpp_depend_add_global_target`:
 #
@@ -46,7 +45,7 @@ function(fpp_depend_add_module_target MODULE TARGET SOURCES_UNUSED DEPENDENCIES)
         endif()
     endforeach()
     file(RELATIVE_PATH OFFSET "${CMAKE_BINARY_DIR}" "${CMAKE_CURRENT_BINARY_DIR}")
-    set(LOCAL_CACHE "${CMAKE_CURRENT_BINARY_DIR}/fpp-cache-raw")
+    set(LOCAL_CACHE "${CMAKE_CURRENT_BINARY_DIR}/fpp-cache")
     set(DELIVERY_CACHE "${FPRIME_BINARY_DIR}/${OFFSET}/fpp-cache")
     file(MAKE_DIRECTORY "${LOCAL_CACHE}")
     file(MAKE_DIRECTORY "${DELIVERY_CACHE}")
@@ -67,10 +66,15 @@ function(fpp_depend_add_module_target MODULE TARGET SOURCES_UNUSED DEPENDENCIES)
     endforeach()
     list(REMOVE_DUPLICATES PREVIOUS_CLOSURE)
     if (FPP_SOURCES)
-        set(OUTPUT_FILES)
-        foreach(CACHE_FILE IN LISTS FPP_DEPEND_CACHE_FILES)
-            list(APPEND OUTPUT_FILES "${LOCAL_CACHE}/${CACHE_FILE}")
-        endforeach()
+        set(OUTPUT_FILES
+            "${LOCAL_CACHE}/stdout.txt"
+            "${LOCAL_CACHE}/direct.txt"
+            "${LOCAL_CACHE}/missing.txt"
+            "${LOCAL_CACHE}/framework.txt"
+            "${LOCAL_CACHE}/generated.txt"
+            "${LOCAL_CACHE}/include.txt"
+            "${LOCAL_CACHE}/unittest.txt"
+        )
         add_custom_command(
             OUTPUT ${OUTPUT_FILES}
             COMMAND ${FPP__INTERNAL_LOCATE_DEFS_HELPER}
@@ -97,7 +101,4 @@ function(fpp_depend_add_module_target MODULE TARGET SOURCES_UNUSED DEPENDENCIES)
         add_custom_target("${TARGET}_${MODULE}")
     endif()
     add_dependencies("${TARGET}" "${TARGET}_${MODULE}")
-    if (NOT FPRIME_IS_SUB_BUILD AND TARGET "${MODULE}")
-        add_dependencies("${MODULE}" "${TARGET}_${MODULE}")
-    endif()
 endfunction(fpp_depend_add_module_target)
