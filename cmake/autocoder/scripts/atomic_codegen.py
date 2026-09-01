@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import filecmp
 import os
 import shutil
@@ -6,11 +7,23 @@ import subprocess
 import sys
 import tempfile
 
-out_dir = sys.argv[1]
-cmd = list(sys.argv[sys.argv.index("--") + 1:])
-tmp = tempfile.mkdtemp(dir=out_dir, prefix=".atomic-codegen-")
+parser = argparse.ArgumentParser(
+    usage="%(prog)s -d <out_dir> -- <codegen cmd> ..."
+)
+parser.add_argument("-d", required=True, dest="out_dir")
+
+argv = sys.argv[1:]
+if "--" not in argv:
+    parser.error("expected `-- <codegen cmd>`")
+# Passthrough cmd is after `--`; args before
+split = argv.index("--")
+args = parser.parse_args(argv[:split])
+command = argv[split + 1:]
+
+tmp = tempfile.mkdtemp(dir=args.out_dir, prefix=".atomic-codegen-")
+# Replace references to out_dir w/ the tmp dir
+cmd = [tmp if arg == args.out_dir else arg for arg in command]
 try:
-    cmd[cmd.index("-d") + 1] = tmp
     result = subprocess.run(cmd)
     if result.returncode != 0:
         sys.exit(result.returncode)
@@ -20,7 +33,7 @@ try:
         for name in files
     ]
     for src in produced:
-        dst = os.path.join(out_dir, os.path.relpath(src, tmp))
+        dst = os.path.join(args.out_dir, os.path.relpath(src, tmp))
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         if not os.path.exists(dst) or not filecmp.cmp(src, dst, shallow=False):
             os.replace(src, dst)
