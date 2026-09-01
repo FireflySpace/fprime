@@ -273,16 +273,24 @@ function(fpp_setup_autocode MODULE_NAME AC_INPUT_FILES)
     # Add in dictionary generation
     if (GENERATED_DICT)
         set(FPRIME_JSON_VERSION_FILE "${CMAKE_BINARY_DIR}/versions/version.json")
+        set(FPP_DICT_STAMP "${CMAKE_CURRENT_BINARY_DIR}/fpp-dict.stamp")
         add_custom_command(
-            OUTPUT ${GENERATED_DICT}
-            COMMAND ${FPRIME_FPP_TO_DICT_WRAPPER}
+            OUTPUT "${FPP_DICT_STAMP}"
+            COMMAND ${FPRIME_ATOMIC_CODEGEN} "-d" "${CMAKE_CURRENT_BINARY_DIR}" "--"
+                ${FPRIME_FPP_TO_DICT_WRAPPER}
                 "--executable" "${FPP_TO_DICT}"
                 "--cmake-bin-dir" "${CMAKE_CURRENT_BINARY_DIR}"
                 "--jsonVersionFile" "${FPRIME_JSON_VERSION_FILE}"
                 ${FPP_IMPORT_FLAGS} ${AC_INPUT_FILES}
+            COMMAND "${CMAKE_COMMAND}" -E touch "${FPP_DICT_STAMP}"
             DEPENDS ${FILE_DEPENDENCIES}
                     ${FPRIME_JSON_VERSION_FILE}
                     version_generate
+        )
+        add_custom_command(
+            OUTPUT ${GENERATED_DICT}
+            COMMAND "${CMAKE_COMMAND}" -E true
+            DEPENDS "${FPP_DICT_STAMP}"
         )
     endif()
 
