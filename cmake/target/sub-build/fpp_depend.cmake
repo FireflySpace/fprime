@@ -75,6 +75,11 @@ function(fpp_depend_add_module_target MODULE TARGET SOURCES_UNUSED DEPENDENCIES)
             "${LOCAL_CACHE}/include.txt"
             "${LOCAL_CACHE}/unittest.txt"
         )
+        set(DELIVERY_FILES)
+        foreach(OUTPUT_FILE IN LISTS OUTPUT_FILES)
+            get_filename_component(OUTPUT_NAME "${OUTPUT_FILE}" NAME)
+            list(APPEND DELIVERY_FILES "${DELIVERY_CACHE}/${OUTPUT_NAME}")
+        endforeach()
         add_custom_command(
             OUTPUT ${OUTPUT_FILES}
             COMMAND ${FPP__INTERNAL_LOCATE_DEFS_HELPER}
@@ -89,14 +94,18 @@ function(fpp_depend_add_module_target MODULE TARGET SOURCES_UNUSED DEPENDENCIES)
                 "-u" "${LOCAL_CACHE}/unittest.txt"
                 "-a"
                 ${FPP_SOURCES}
-            COMMAND "${CMAKE_COMMAND}" -E copy_if_different ${OUTPUT_FILES} "${DELIVERY_CACHE}"
             DEPENDS
                 fpp_locs
                 "${FPRIME_BINARY_DIR}/locs.fpp"
                 ${FPP_SOURCES}
                 ${PREVIOUS_CLOSURE}
         )
-        add_custom_target("${TARGET}_${MODULE}" DEPENDS ${OUTPUT_FILES})
+        add_custom_command(
+            OUTPUT ${DELIVERY_FILES}
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different ${OUTPUT_FILES} "${DELIVERY_CACHE}"
+            DEPENDS ${OUTPUT_FILES}
+        )
+        add_custom_target("${TARGET}_${MODULE}" DEPENDS ${DELIVERY_FILES})
     else()
         add_custom_target("${TARGET}_${MODULE}")
     endif()
