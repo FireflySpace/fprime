@@ -251,12 +251,19 @@ function(fpp_setup_autocode MODULE_NAME AC_INPUT_FILES)
 
     # Add in steps for CPP generation
     if (GENERATED_CPP)
+        set(FPP_CODEGEN_STAMP "${CMAKE_CURRENT_BINARY_DIR}/fpp-codegen.stamp")
         add_custom_command(
-                OUTPUT ${GENERATED_CPP}
-                COMMAND ${FPRIME_ATOMIC_CODEGEN} "${FPP_OUTPUT_DIRECTORY}" "--"
+                OUTPUT "${FPP_CODEGEN_STAMP}"
+                COMMAND ${FPRIME_ATOMIC_CODEGEN} "-d" "${FPP_OUTPUT_DIRECTORY}" "--"
                     ${FPP_TO_CPP} "-d" "${FPP_OUTPUT_DIRECTORY}" ${FPP_IMPORT_FLAGS} ${AC_INPUT_FILES}
                     "-p" "${FPP_LOCATIONS_COMMA_SEP}"
+                COMMAND "${CMAKE_COMMAND}" -E touch "${FPP_CODEGEN_STAMP}"
                 DEPENDS ${FILE_DEPENDENCIES}
+        )
+        add_custom_command(
+                OUTPUT ${GENERATED_CPP}
+                COMMAND "${CMAKE_COMMAND}" -E true
+                DEPENDS "${FPP_CODEGEN_STAMP}"
         )
     endif()
     # Add in dictionary generation
