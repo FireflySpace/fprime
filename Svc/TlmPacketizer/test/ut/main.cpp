@@ -114,6 +114,30 @@ TEST(TestNominal, sectionConfigParameterTest) {
     tester.sectionConfigParameterTest();
 }
 
+TEST(TestNominal, PerPacketOverrideTest) {
+    TEST_CASE(100.1.13, "Per-packet ENABLE_PACKET override disables a single packet/section");
+    Svc::TlmPacketizerTester tester;
+    tester.perPacketOverrideTest();
+}
+
+TEST(TestNominal, PerPacketCommandsTest) {
+    TEST_CASE(100.1.15, "Per-packet commands update overrides + mirror out configOut");
+    Svc::TlmPacketizerTester tester;
+    tester.perPacketCommandsTest();
+}
+
+TEST(TestNominal, ConfigInReloadTest) {
+    TEST_CASE(100.1.16, "configIn reload applies overrides to the volatile table without echo");
+    Svc::TlmPacketizerTester tester;
+    tester.configInReloadTest();
+}
+
+TEST(TestNominal, GetPacketConfigTest) {
+    TEST_CASE(100.1.14, "GET_PACKET_CONFIG reports effective config; unknown id warns");
+    Svc::TlmPacketizerTester tester;
+    tester.getPacketConfigTest();
+}
+
 int main(int argc, char* argv[]) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
