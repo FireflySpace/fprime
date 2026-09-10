@@ -18,12 +18,12 @@ typedef EventManager_FilterSeverity FilterSeverity;
 
 EventManager::EventManager(const char* name) : EventManagerComponentBase(name), m_severityFilter() {
     // set filter defaults
-    this->m_severityFilter.setFilter(Fw::LogSeverity::WARNING_HI, FILTER_WARNING_HI_DEFAULT);
-    this->m_severityFilter.setFilter(Fw::LogSeverity::WARNING_LO, FILTER_WARNING_LO_DEFAULT);
-    this->m_severityFilter.setFilter(Fw::LogSeverity::COMMAND, FILTER_COMMAND_DEFAULT);
-    this->m_severityFilter.setFilter(Fw::LogSeverity::ACTIVITY_HI, FILTER_ACTIVITY_HI_DEFAULT);
-    this->m_severityFilter.setFilter(Fw::LogSeverity::ACTIVITY_LO, FILTER_ACTIVITY_LO_DEFAULT);
-    this->m_severityFilter.setFilter(Fw::LogSeverity::DIAGNOSTIC, FILTER_DIAGNOSTIC_DEFAULT);
+    this->m_severityFilter.filter.setFilter(Fw::LogSeverity::WARNING_HI, FILTER_WARNING_HI_DEFAULT);
+    this->m_severityFilter.filter.setFilter(Fw::LogSeverity::WARNING_LO, FILTER_WARNING_LO_DEFAULT);
+    this->m_severityFilter.filter.setFilter(Fw::LogSeverity::COMMAND, FILTER_COMMAND_DEFAULT);
+    this->m_severityFilter.filter.setFilter(Fw::LogSeverity::ACTIVITY_HI, FILTER_ACTIVITY_HI_DEFAULT);
+    this->m_severityFilter.filter.setFilter(Fw::LogSeverity::ACTIVITY_LO, FILTER_ACTIVITY_LO_DEFAULT);
+    this->m_severityFilter.filter.setFilter(Fw::LogSeverity::DIAGNOSTIC, FILTER_DIAGNOSTIC_DEFAULT);
 }
 
 EventManager::~EventManager() {}
@@ -42,7 +42,12 @@ void EventManager::LogRecv_handler(FwIndexType portNum,
     }
 
     // Check severity filter (FATAL always passes through)
-    if (this->m_severityFilter.isFiltered(severity)) {
+    bool severityFiltered;
+    {
+        Os::ScopeLock lock(this->m_severityFilter.mutex);
+        severityFiltered = this->m_severityFilter.filter.isFiltered(severity);
+    }
+    if (severityFiltered) {
         return;
     }
 
@@ -107,7 +112,10 @@ void EventManager::SET_EVENT_FILTER_cmdHandler(FwOpcodeType opCode,
         this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::VALIDATION_ERROR);
         return;
     }
-    this->m_severityFilter.setFilter(logSeverity, filterEnable.e == Enabled::ENABLED);
+    {
+        Os::ScopeLock lock(this->m_severityFilter.mutex);
+        this->m_severityFilter.filter.setFilter(logSeverity, filterEnable.e == Enabled::ENABLED);
+    }
     this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
 }
 
@@ -152,7 +160,12 @@ void EventManager::DUMP_FILTER_STATE_cmdHandler(FwOpcodeType opCode,  //!< The o
         Fw::LogSeverity logSeverity;
         Fw::Success status = EventSeverityFilter::fromIndex(static_cast<FwSizeType>(filter), logSeverity);
         FW_ASSERT(status == Fw::Success::SUCCESS, static_cast<FwAssertArgType>(filter));
-        this->log_ACTIVITY_LO_SEVERITY_FILTER_STATE(filterState, this->m_severityFilter.isEnabled(logSeverity));
+        bool filterEnabled;
+        {
+            Os::ScopeLock lock(this->m_severityFilter.mutex);
+            filterEnabled = this->m_severityFilter.filter.isEnabled(logSeverity);
+        }
+        this->log_ACTIVITY_LO_SEVERITY_FILTER_STATE(filterState, filterEnabled);
     }
 
     // Snapshot the ID filter under the lock; log after release since LogRecv is

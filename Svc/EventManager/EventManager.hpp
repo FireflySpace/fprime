@@ -59,7 +59,10 @@ class EventManager final : public EventManagerComponentBase {
     );
 
     // Severity filter state (shared implementation)
-    EventSeverityFilter m_severityFilter;
+    struct {
+        mutable Os::Mutex mutex;
+        EventSeverityFilter filter;
+    } m_severityFilter;
 
     // Working members
     Fw::LogPacket m_logPacket;  //!< packet buffer for assembling log packets
