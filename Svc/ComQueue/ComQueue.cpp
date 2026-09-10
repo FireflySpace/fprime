@@ -386,9 +386,10 @@ void ComQueue::sendComBuffer(Fw::ComBuffer& comBuffer, FwIndexType queueIndex) {
     context.set_comQueueIndex(queueIndex);
     const BufferState previousState = this->m_buffer_state.exchange(UNOWNED);
     FW_ASSERT(previousState == OWNED, static_cast<FwAssertArgType>(previousState));
-    this->dataOut_out(0, outBuffer, context);
-    // Set state to WAITING for the status to come back
+
+    // Set state to WAITING for the status to come back & send
     this->m_state = WAITING;
+    this->dataOut_out(0, outBuffer, context);
 }
 
 void ComQueue::sendBuffer(Fw::Buffer& buffer, FwIndexType queueIndex) {
@@ -404,9 +405,9 @@ void ComQueue::sendBuffer(Fw::Buffer& buffer, FwIndexType queueIndex) {
     context.set_comQueueIndex(queueIndex);
     const BufferState previousState = this->m_buffer_state.exchange(UNOWNED);
     FW_ASSERT(previousState == OWNED, static_cast<FwAssertArgType>(previousState));
-    this->dataOut_out(0, buffer, context);
-    // Set state to WAITING for the status to come back
+    // Set state to WAITING for the status to come back & send
     this->m_state = WAITING;
+    this->dataOut_out(0, buffer, context);
 }
 
 void ComQueue::drainQueue(FwIndexType index) {
