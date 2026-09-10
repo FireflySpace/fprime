@@ -275,6 +275,18 @@ void ComQueue::run_handler(const FwIndexType portNum, U32 context) {
         this->m_queues[i + COM_PORT_COUNT].clear_high_water_mark();
     }
     this->tlmWrite_buffQueueDepth(buffQueueDepth);
+
+    // if we are READY process queue in case the processQueue port call got dropped
+    if (this->m_state == READY) {
+        this->processQueue();
+    }
+}
+
+void ComQueue::processQueue_internalInterfaceHandler() {
+    // if we are still READY process queue
+    if (this->m_state == READY) {
+        this->processQueue();
+    } // Otherwise, a run tick or enqueue processQueue-ed btw comStatusIn & now
 }
 
 void ComQueue ::dataReturnIn_handler(FwIndexType portNum, Fw::Buffer& data, const ComCfg::FrameContext& context) {
