@@ -98,6 +98,12 @@ TEST(TestOffNominal, NullChannelListTest) {
     tester.nullChannelListTest();
 }
 
+TEST(TestOffNominal, RunQueueOverflowTest) {
+    TEST_CASE(100.2.6, "Run queue overflow drops instead of asserting");
+    Svc::TlmPacketizerTester tester;
+    tester.runQueueOverflowTest();
+}
+
 TEST(TestNominal, TlmGetTest) {
     TEST_CASE(100.1.8, "Get telemetry channel");
     Svc::TlmPacketizerTester tester;
