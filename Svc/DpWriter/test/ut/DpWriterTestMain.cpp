@@ -97,6 +97,12 @@ TEST(BufferSendIn, RoutingPorts) {
     tester.RoutingPorts();
 }
 
+TEST(BufferSendIn, OverflowHook) {
+    COMMENT("Overflow the queue and verify the DP is dropped and its buffer returned, with no assert.");
+    BufferSendIn::Tester tester;
+    tester.OverflowHook();
+}
+
 TEST(CLEAR_EVENT_THROTTLE, OK) {
     COMMENT("Test the CLEAR_EVENT_THROTTLE command.");
     REQUIREMENT("SVC-DPMANAGER-006");

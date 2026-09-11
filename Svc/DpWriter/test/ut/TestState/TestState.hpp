@@ -52,6 +52,9 @@ class TestState : public DpWriterTester {
 
     //! Test that all fused routing ports preserve the input port index
     void testRoutingPorts();
+
+    //! Test that a full queue drops the DP and returns its buffer instead of asserting
+    void testBufferSendInOverflowHook();
 };
 
 }  // namespace Svc
