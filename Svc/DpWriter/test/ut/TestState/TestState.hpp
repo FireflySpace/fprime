@@ -55,6 +55,9 @@ class TestState : public DpWriterTester {
 
     //! Test that a full queue drops the DP and returns its buffer instead of asserting
     void testBufferSendInOverflowHook();
+
+    //! Overflow with an unparseable (too-small) buffer: id can't be read, sentinel is emitted
+    void testBufferSendInOverflowHookUnknownId();
 };
 
 }  // namespace Svc
