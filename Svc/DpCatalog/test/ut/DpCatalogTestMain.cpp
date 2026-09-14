@@ -295,6 +295,36 @@ TEST(NominalManual, PingIn) {
     tester.test_PingIn();
 }
 
+TEST(OffNominal, QueueOverflowDrops) {
+    Svc::DpCatalogTester tester;
+    tester.test_QueueOverflowDrops();
+}
+
+TEST(OffNominal, UnexpectedFileDone) {
+    Svc::DpCatalogTester tester;
+    tester.test_UnexpectedFileDone();
+}
+
+TEST(OffNominal, StrandedFileDoneRecovery) {
+    Svc::DpCatalogTester tester;
+    tester.test_StrandedFileDoneRecovery();
+}
+
+TEST(OffNominal, FailedDownlinkRetry) {
+    Svc::DpCatalogTester tester;
+    tester.test_FailedDownlinkRetry();
+}
+
+TEST(OffNominal, BuildRejectedWhileInFlight) {
+    Svc::DpCatalogTester tester;
+    tester.test_BuildRejectedWhileInFlight();
+}
+
+TEST(OffNominal, ClearInFlightNoReissue) {
+    Svc::DpCatalogTester tester;
+    tester.test_ClearInFlightNoReissue();
+}
+
 TEST(NominalManual, BadFileDone) {
     Svc::DpCatalogTester tester;
     tester.test_BadFileDone();

@@ -87,8 +87,6 @@ void DpCatalog::configure(Fw::FileNameString directories[DP_MAX_DIRECTORIES],
 void DpCatalog::resetCatalog() {
     // Clear the catalog
     this->m_dpCatalog.clear();
-    // Clear transmission state
-    this->m_hasCurrentXmit = false;
     // Reset counters
     this->m_pendingFiles = 0;
     this->m_pendingDpBytes = 0;
@@ -320,8 +318,7 @@ Fw::CmdResponse DpCatalog::doCatalogBuild() {
         return Fw::CmdResponse::EXECUTION_ERROR;
     }
 
-    // make sure a downlink is not in progress
-    if (this->m_xmitInProgress) {
+    if (this->m_xmitInProgress || this->m_hasCurrentXmit) {
         this->log_WARNING_LO_DpXmitInProgress();
         return Fw::CmdResponse::EXECUTION_ERROR;
     }
@@ -693,6 +690,10 @@ void DpCatalog::sendNextEntry() {
         return;
     }
 
+    if (this->m_hasCurrentXmit) {
+        return;
+    }
+
     // Look for the next entry to send
     DpStateEntry entry;
     if (!this->findNextEntry(entry)) {
@@ -781,9 +782,25 @@ void DpCatalog::shutdown() {
 // ----------------------------------------------------------------------
 
 void DpCatalog ::fileDone_handler(FwIndexType portNum, const Svc::SendFileResponse& resp) {
+    this->m_pendingFileDoneResp = resp;
+    this->m_fileDonePending.store(true);
+    this->processFileDone_internalInterfaceInvoke();
+}
+
+void DpCatalog ::processFileDone_internalInterfaceHandler() {
+    this->serviceFileDone();
+}
+
+void DpCatalog ::serviceFileDone() {
+    if (!this->m_fileDonePending.exchange(false)) {
+        return;
+    }
+    const Svc::SendFileResponse resp = this->m_pendingFileDoneResp;
+
     // check file status
     if (resp.get_status() != Svc::SendFileStatus::STATUS_OK) {
         this->log_WARNING_HI_DpFileXmitError(this->m_currXmitFileName, resp.get_status());
+        this->m_hasCurrentXmit = false;
         this->m_xmitInProgress = false;
         this->dispatchWaitedResponse(Fw::CmdResponse::EXECUTION_ERROR);
         return;
@@ -798,7 +815,10 @@ void DpCatalog ::fileDone_handler(FwIndexType portNum, const Svc::SendFileRespon
     }
 
     // Should have a valid current transmit entry
-    FW_ASSERT(this->m_hasCurrentXmit);
+    if (!this->m_hasCurrentXmit) {
+        this->log_WARNING_HI_UnexpectedFileDone();
+        return;
+    }
 
     // Reduce pending
     this->m_pendingDpBytes -= this->m_currentXmitEntry.record.get_size();
@@ -815,7 +835,9 @@ void DpCatalog ::fileDone_handler(FwIndexType portNum, const Svc::SendFileRespon
 
     // Remove from catalog
     Fw::Success status = this->m_dpCatalog.remove(this->m_currentXmitEntry);
-    FW_ASSERT(status == Fw::Success::SUCCESS);
+    if (status != Fw::Success::SUCCESS) {
+        this->log_WARNING_HI_UnexpectedFileDone();
+    }
 
     this->m_hasCurrentXmit = false;
 
@@ -826,6 +848,7 @@ void DpCatalog ::fileDone_handler(FwIndexType portNum, const Svc::SendFileRespon
 void DpCatalog ::pingIn_handler(FwIndexType portNum, U32 key) {
     // return code for health ping
     this->pingOut_out(0, key);
+    this->serviceFileDone();
 }
 
 void DpCatalog ::addToCat_handler(FwIndexType portNum,
@@ -877,6 +900,16 @@ void DpCatalog ::addToCat_handler(FwIndexType portNum,
         // prune and rewrite the state file
         this->pruneAndWriteStateFile();
     }
+}
+
+void DpCatalog ::addToCat_overflowHook(FwIndexType portNum,
+                                       const Fw::StringBase& fileName,
+                                       FwDpPriorityType priority,
+                                       FwSizeType size) {
+    (void)portNum;
+    (void)priority;
+    (void)size;
+    this->log_WARNING_HI_DpAddDropped(fileName);
 }
 
 // ----------------------------------------------------------------------
@@ -937,6 +970,11 @@ Fw::CmdResponse DpCatalog::doCatalogXmit() {
     if (not this->m_catalogBuilt) {
         this->log_WARNING_HI_XmitUnbuiltCatalog();
         return Fw::CmdResponse::EXECUTION_ERROR;
+    }
+
+    if (this->m_hasCurrentXmit) {
+        this->m_xmitInProgress = true;
+        return Fw::CmdResponse::OK;
     }
 
     // start transmission

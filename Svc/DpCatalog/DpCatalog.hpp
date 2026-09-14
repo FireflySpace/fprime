@@ -10,6 +10,8 @@
 #include "Svc/DpCatalog/DpCatalogComponentAc.hpp"
 #include "Svc/DpCatalog/DpRecordSerializableAc.hpp"
 
+#include <atomic>
+
 #include <Fw/DataStructures/ExternalArray.hpp>
 #include <Fw/DataStructures/RedBlackTreeSet.hpp>
 #include <Fw/Deprecate.hpp>
@@ -79,6 +81,12 @@ class DpCatalog final : public DpCatalogComponentBase {
     void fileDone_handler(FwIndexType portNum,  //!< The port number
                           const Svc::SendFileResponse& resp) override;
 
+    //! Handler for processFileDone: service a stashed fileDone on this component's thread
+    void processFileDone_internalInterfaceHandler() override;
+
+    //! Process a stashed fileDone completion; runs only on this component's thread
+    void serviceFileDone();
+
     //! Handler implementation for pingIn
     //!
     //! Ping input port
@@ -94,6 +102,13 @@ class DpCatalog final : public DpCatalogComponentBase {
                           FwDpPriorityType priority,       //!< The priority
                           FwSizeType size                  //!< The file size
                           ) override;
+
+    //! Overflow hook for addToCat: drop the runtime add instead of asserting on queue overflow
+    void addToCat_overflowHook(FwIndexType portNum,             //!< The port number
+                               const Fw::StringBase& fileName,  //!< The file name
+                               FwDpPriorityType priority,       //!< The priority
+                               FwSizeType size                  //!< The file size
+    );
 
   private:
     // ----------------------------------------------------------------------
@@ -240,7 +255,10 @@ class DpCatalog final : public DpCatalogComponentBase {
 
     Fw::RedBlackTreeSet<DpStateEntry, DP_MAX_FILES> m_dpCatalog;  //!< The sorted catalog of DPs
     DpStateEntry m_currentXmitEntry;                              //!< Entry currently being transmitted
-    bool m_hasCurrentXmit = false;                                //!< Whether m_currentXmitEntry is valid
+    bool m_hasCurrentXmit = false;  //!< a transfer is outstanding at cfdp
+
+    std::atomic<bool> m_fileDonePending{false};   //!< a fileDone is stashed for service on our thread
+    Svc::SendFileResponse m_pendingFileDoneResp;  //!< the stashed completion; valid iff m_fileDonePending
 
     FwSizeType m_numDpSlots = 0;  //!< Stores the available number of record slots.
 

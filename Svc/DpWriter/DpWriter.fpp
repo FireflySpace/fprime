@@ -56,7 +56,7 @@ module Svc {
     # ----------------------------------------------------------------------
 
     @ Clear event throttling
-    async command CLEAR_EVENT_THROTTLE
+    async command CLEAR_EVENT_THROTTLE drop
 
     # ----------------------------------------------------------------------
     # Events

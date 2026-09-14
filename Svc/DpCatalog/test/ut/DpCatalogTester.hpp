@@ -151,6 +151,12 @@ class DpCatalogTester : public DpCatalogGTestBase {
     void test_CompareEntries();
     void test_PingIn();
     void test_BadFileDone();
+    void test_QueueOverflowDrops();
+    void test_UnexpectedFileDone();
+    void test_StrandedFileDoneRecovery();
+    void test_FailedDownlinkRetry();
+    void test_BuildRejectedWhileInFlight();
+    void test_ClearInFlightNoReissue();
     void test_ProcessFileInvalidDir();
     void test_MalformedFile();
     void test_TruncatedDpRejected();

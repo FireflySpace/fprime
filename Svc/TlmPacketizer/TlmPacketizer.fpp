@@ -84,21 +84,21 @@ module Svc {
     async command SET_LEVEL(
                              level: FwChanIdType @< The I32 command argument
                            ) \
-      opcode 0
+      opcode 0 drop
 
     @ Force a packet to be sent
     async command SEND_PKT(
                             $id: U32                    @< The packet ID
                             section: TelemetrySection   @< Section to emit packet
                           ) \
-      opcode 1
+      opcode 1 drop
 
     @ Enable / disable a telemetry section
     async command ENABLE_SECTION(
                                 section: TelemetrySection   @< Section grouping to configure
                                 enable: Fw.Enabled          @< Section enabled or disabled
                               ) \
-      opcode 2
+      opcode 2 drop
 
     @ Enable / disable telemetry of a group on a section
     async command ENABLE_GROUP(
@@ -106,7 +106,7 @@ module Svc {
                                 tlmGroup: FwChanIdType      @< Group Identifier
                                 enable: Fw.Enabled          @< Section enabled or disabled
                               ) \
-      opcode 3
+      opcode 3 drop
     
     @ Force telemetering a group on a section, even if disabled
     async command FORCE_GROUP(
@@ -114,7 +114,7 @@ module Svc {
                                     tlmGroup: FwChanIdType      @< Group Identifier
                                     enable: Fw.Enabled          @< Section enabled or disabled
                                   ) \
-      opcode 4
+      opcode 4 drop
 
     @ Set Min and Max Deltas between successive packets
     async command CONFIGURE_GROUP_RATES(
@@ -124,7 +124,7 @@ module Svc {
                                         minDelta: U32               @< Minimum Sched Ticks to send packets on updates when using ON_CHANGE logic
                                         maxDelta: U32               @< Maximum Sched Ticks between packets to send when using EVERY_MAX logic
                                       ) \
-      opcode 5
+      opcode 5 drop
     @ Parameter to control section enable flags
     external param SECTION_ENABLED: SectionEnabled default TELEMETRY_SECTION_ENABLED_DEFAULTS
     @ Parameter to control section configuration

@@ -40,11 +40,14 @@ module Svc {
     @ File Downlink send port
     output port fileOut: Svc.SendFileRequest
 
-    @ File Downlink send complete port
-    async input port fileDone: SendFileComplete
+    @ File Downlink send complete port. sync (no queue): stash and defer to our own thread
+    sync input port fileDone: SendFileComplete
 
-    @ DP Writer Add File to Cat
-    async input port addToCat: DpWritten
+    @ DP Writer Add File to Cat. hook: drop on overflow, recover via BUILD_CATALOG
+    async input port addToCat: DpWritten hook
+
+    @ Service a stashed fileDone on our own thread. drop: pingIn heartbeat re-services if lost
+    internal port processFileDone drop
 
     # ----------------------------------------------------------------------
     # F Prime infrastructure ports
@@ -77,22 +80,22 @@ module Svc {
 
     @ Build catalog from data product directory. Will block until complete
     async command BUILD_CATALOG \
-      opcode 0
+      opcode 0 drop
 
     @ Start transmitting catalog
     async command START_XMIT_CATALOG (
                                     wait: Fw.Wait, @< have START_XMIT command complete wait for catalog to complete transmitting
                                     remainActive: bool @< should the catalog resume transmission when Dps are added at runtime
                                   ) \
-      opcode 1
+      opcode 1 drop
 
     @ Stop transmitting catalog
     async command STOP_XMIT_CATALOG \
-      opcode 2
+      opcode 2 drop
 
     @ clear existing catalog
     async command CLEAR_CATALOG \
-      opcode 3
+      opcode 3 drop
 
     # ----------------------------------------------------------------------
     # Events
@@ -430,6 +433,22 @@ module Svc {
       severity warning high \
       id 49 \
       format "Failed to format DP file name for {} with status {}" \
+      throttle 10
+
+    @ addToCat queue full: add dropped; recover via BUILD_CATALOG
+    event DpAddDropped(
+                            file: string size FileNameStringSize @< The dropped file
+                          ) \
+      severity warning high \
+      id 50 \
+      format "Dropped runtime add of {} (queue full); recover via BUILD_CATALOG" \
+      throttle 10
+
+    @ file-complete with no matching transmit; ignored
+    event UnexpectedFileDone \
+      severity warning high \
+      id 51 \
+      format "Unexpected file-complete with no matching transmit; ignored" \
       throttle 10
 
 

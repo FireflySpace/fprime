@@ -720,6 +720,179 @@ void DpCatalogTester ::test_BadFileDone() {
     this->component.shutdown();
 }
 
+void DpCatalogTester ::test_QueueOverflowDrops() {
+    Fw::FileNameString path("./DpTest/x.dp");
+    for (U32 i = 0; i < TEST_INSTANCE_QUEUE_DEPTH; i++) {
+        this->invoke_to_addToCat(0, path, 0, 0);
+    }
+    ASSERT_EVENTS_DpAddDropped_SIZE(0);
+
+    this->invoke_to_addToCat(0, path, 0, 0);
+    ASSERT_EVENTS_DpAddDropped_SIZE(1);
+}
+
+void DpCatalogTester ::test_UnexpectedFileDone() {
+    Fw::FileNameString stateFile("");
+    Fw::MallocAllocator alloc;
+    Fw::FileNameString dirs[1];
+    dirs[0] = "./DpTest_UnexpectedFileDone";
+    this->makeDpDir(dirs[0].toChar());
+    Fw::Time time(1000, 100);
+    Fw::String dpFile = this->genDP(0x222, 10, time, 16, Fw::DpState::UNTRANSMITTED, false, dirs[0].toChar());
+    ASSERT_STRNE(dpFile.toChar(), "");
+    this->component.configure(Fw::ExternalArray<Fw::FileNameString>(dirs, 1), stateFile, 100, alloc);
+
+    this->sendCmd_BUILD_CATALOG(0, 10);
+    this->component.doDispatch();
+    ASSERT_CMD_RESPONSE(0, DpCatalog::OPCODE_BUILD_CATALOG, 10, Fw::CmdResponse::OK);
+
+    this->invoke_to_fileDone(0, Svc::SendFileResponse());
+    this->component.doDispatch();
+    ASSERT_EVENTS_UnexpectedFileDone_SIZE(1);
+
+    this->delDp(0x222, time, dirs[0].toChar());
+    this->component.shutdown();
+}
+
+void DpCatalogTester ::test_StrandedFileDoneRecovery() {
+    Fw::FileNameString stateFile("");
+    Fw::MallocAllocator alloc;
+    Fw::FileNameString dirs[1];
+    dirs[0] = "./DpTest_Stranded";
+    this->makeDpDir(dirs[0].toChar());
+    Fw::Time time(1000, 100);
+    Fw::String dpFile = this->genDP(0x333, 10, time, 16, Fw::DpState::UNTRANSMITTED, false, dirs[0].toChar());
+    ASSERT_STRNE(dpFile.toChar(), "");
+    this->component.configure(Fw::ExternalArray<Fw::FileNameString>(dirs, 1), stateFile, 100, alloc);
+
+    this->sendCmd_BUILD_CATALOG(0, 10);
+    this->component.doDispatch();
+
+    this->m_autoFileDone = false;
+    this->sendCmd_START_XMIT_CATALOG(0, 11, Fw::Wait::NO_WAIT, false);
+    this->component.doDispatch();
+    ASSERT_from_fileOut_SIZE(1);
+    this->clearHistory();
+
+    Fw::FileNameString unmanaged("./DpTest_Unmanaged/x.dp");
+    for (U32 i = 0; i < TEST_INSTANCE_QUEUE_DEPTH; i++) {
+        this->invoke_to_addToCat(0, unmanaged, 0, 0);
+    }
+
+    this->invoke_to_fileDone(0, Svc::SendFileResponse());
+
+    while (this->component.m_queue.getMessagesAvailable() > 0) {
+        this->component.doDispatch();
+    }
+    ASSERT_EVENTS_ProductComplete_SIZE(0);
+
+    this->invoke_to_pingIn(0, 0xABCD);
+    this->component.doDispatch();
+    ASSERT_EVENTS_ProductComplete_SIZE(1);
+
+    this->delDp(0x333, time, dirs[0].toChar());
+    this->component.shutdown();
+}
+
+void DpCatalogTester ::test_FailedDownlinkRetry() {
+    Fw::FileNameString stateFile("");
+    Fw::MallocAllocator alloc;
+    Fw::FileNameString dirs[1];
+    dirs[0] = "./DpTest_FailedRetry";
+    this->makeDpDir(dirs[0].toChar());
+    Fw::Time time(1000, 100);
+    Fw::String dpFile = this->genDP(0x444, 10, time, 16, Fw::DpState::UNTRANSMITTED, false, dirs[0].toChar());
+    ASSERT_STRNE(dpFile.toChar(), "");
+    this->component.configure(Fw::ExternalArray<Fw::FileNameString>(dirs, 1), stateFile, 100, alloc);
+
+    this->sendCmd_BUILD_CATALOG(0, 10);
+    this->component.doDispatch();
+
+    this->m_autoFileDone = false;
+    this->sendCmd_START_XMIT_CATALOG(0, 11, Fw::Wait::NO_WAIT, false);
+    this->component.doDispatch();
+    ASSERT_from_fileOut_SIZE(1);
+
+    this->invoke_to_fileDone(0, Svc::SendFileResponse(Svc::SendFileStatus::STATUS_ERROR, 0));
+    this->component.doDispatch();
+    ASSERT_EVENTS_DpFileXmitError_SIZE(1);
+    this->clearHistory();
+
+    this->sendCmd_START_XMIT_CATALOG(0, 12, Fw::Wait::NO_WAIT, false);
+    this->component.doDispatch();
+    ASSERT_from_fileOut_SIZE(1);
+
+    this->delDp(0x444, time, dirs[0].toChar());
+    this->component.shutdown();
+}
+
+void DpCatalogTester ::test_BuildRejectedWhileInFlight() {
+    Fw::FileNameString stateFile("");
+    Fw::MallocAllocator alloc;
+    Fw::FileNameString dirs[1];
+    dirs[0] = "./DpTest_BuildInFlight";
+    this->makeDpDir(dirs[0].toChar());
+    Fw::Time time(1000, 100);
+    Fw::String dpFile = this->genDP(0x555, 10, time, 16, Fw::DpState::UNTRANSMITTED, false, dirs[0].toChar());
+    ASSERT_STRNE(dpFile.toChar(), "");
+    this->component.configure(Fw::ExternalArray<Fw::FileNameString>(dirs, 1), stateFile, 100, alloc);
+
+    this->sendCmd_BUILD_CATALOG(0, 10);
+    this->component.doDispatch();
+
+    this->m_autoFileDone = false;
+    this->sendCmd_START_XMIT_CATALOG(0, 11, Fw::Wait::NO_WAIT, false);
+    this->component.doDispatch();
+    ASSERT_from_fileOut_SIZE(1);
+
+    this->sendCmd_STOP_XMIT_CATALOG(0, 12);
+    this->component.doDispatch();
+    this->clearHistory();
+
+    this->sendCmd_BUILD_CATALOG(0, 13);
+    this->component.doDispatch();
+    ASSERT_CMD_RESPONSE(0, DpCatalog::OPCODE_BUILD_CATALOG, 13, Fw::CmdResponse::EXECUTION_ERROR);
+    ASSERT_EVENTS_DpXmitInProgress_SIZE(1);
+    ASSERT_from_fileOut_SIZE(0);
+
+    this->delDp(0x555, time, dirs[0].toChar());
+    this->component.shutdown();
+}
+
+void DpCatalogTester ::test_ClearInFlightNoReissue() {
+    Fw::FileNameString stateFile("");
+    Fw::MallocAllocator alloc;
+    Fw::FileNameString dirs[1];
+    dirs[0] = "./DpTest_ClearInFlight";
+    this->makeDpDir(dirs[0].toChar());
+    Fw::Time time(1000, 100);
+    Fw::String dpFile = this->genDP(0x666, 10, time, 16, Fw::DpState::UNTRANSMITTED, false, dirs[0].toChar());
+    ASSERT_STRNE(dpFile.toChar(), "");
+    this->component.configure(Fw::ExternalArray<Fw::FileNameString>(dirs, 1), stateFile, 100, alloc);
+
+    this->sendCmd_BUILD_CATALOG(0, 10);
+    this->component.doDispatch();
+
+    this->m_autoFileDone = false;
+    this->sendCmd_START_XMIT_CATALOG(0, 11, Fw::Wait::NO_WAIT, false);
+    this->component.doDispatch();
+    ASSERT_from_fileOut_SIZE(1);
+
+    this->sendCmd_CLEAR_CATALOG(0, 12);
+    this->component.doDispatch();
+    this->sendCmd_STOP_XMIT_CATALOG(0, 13);
+    this->component.doDispatch();
+    this->clearHistory();
+
+    this->sendCmd_BUILD_CATALOG(0, 14);
+    this->component.doDispatch();
+    ASSERT_CMD_RESPONSE(0, DpCatalog::OPCODE_BUILD_CATALOG, 14, Fw::CmdResponse::EXECUTION_ERROR);
+    ASSERT_from_fileOut_SIZE(0);
+
+    this->delDp(0x666, time, dirs[0].toChar());
+    this->component.shutdown();
+}
+
 void DpCatalogTester::test_ProcessFileInvalidDir() {
     Fw::MallocAllocator alloc;
     Fw::FileNameString dirs[1];
