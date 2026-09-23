@@ -202,7 +202,7 @@ void TlmPacketizer ::TlmRecv_handler(const FwIndexType portNum,
         // check if current packet has this channel
         if (entry.packetOffset[pkt] != -1) {
             // get destination address
-            Os::ScopeLock lock(this->m_lock);
+            Os::ScopeLock lock(this->m_fillBuffers[pkt].lock);
             this->m_fillBuffers[pkt].updated = true;
             this->m_fillBuffers[pkt].latestTime = timeTag;
             U8* ptr = &this->m_fillBuffers[pkt].buffer.getBuffAddr()[entry.packetOffset[pkt]];
@@ -266,7 +266,7 @@ Fw::TlmValid TlmPacketizer ::TlmGet_handler(FwIndexType portNum,  //!< The port 
         // check if current packet has this channel
         if (entry.packetOffset[pkt] != -1) {
             // okay, it has the channel. copy chan val into the tlm buf
-            Os::ScopeLock lock(this->m_lock);
+            Os::ScopeLock lock(this->m_fillBuffers[pkt].lock);
             timeTag = this->m_fillBuffers[pkt].latestTime;
             U8* ptr = &this->m_fillBuffers[pkt].buffer.getBuffAddr()[entry.packetOffset[pkt]];
             (void)memcpy(val.getBuffAddr(), ptr, static_cast<size_t>(entry.channelSize));
@@ -299,7 +299,7 @@ void TlmPacketizer ::Run_handler(const FwIndexType portNum, U32 context) {
 
         // Lock only to capture the update status and reset the fill buffer flag.
         {
-          Os::ScopeLock lock(this->m_lock);
+          Os::ScopeLock lock(this->m_fillBuffers[pkt].lock);
           isNewData = this->m_fillBuffers[pkt].updated;
           entryGroup = this->m_fillBuffers[pkt].level;
           this->m_fillBuffers[pkt].updated = false;
@@ -380,7 +380,7 @@ void TlmPacketizer ::Run_handler(const FwIndexType portNum, U32 context) {
         // Only perform the buffer copy if at least one section needs to send.
         if (anySectionNeedsSend) {
             {
-              Os::ScopeLock lock(this->m_lock);
+              Os::ScopeLock lock(this->m_fillBuffers[pkt].lock);
               sendBuffer = this->m_fillBuffers[pkt];
             }
 
@@ -456,7 +456,7 @@ void TlmPacketizer ::SEND_PKT_cmdHandler(const FwOpcodeType opCode,
     for (pkt = 0; pkt < this->m_numPackets; pkt++) {
         if (this->m_fillBuffers[pkt].id == id) {
             {
-                Os::ScopeLock lock(this->m_lock);
+                Os::ScopeLock lock(this->m_fillBuffers[pkt].lock);
                 this->m_fillBuffers[pkt].updated = true;
                 this->m_fillBuffers[pkt].latestTime = this->getTime();
             }
