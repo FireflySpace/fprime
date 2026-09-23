@@ -180,14 +180,19 @@ class TlmPacketizer final : public TlmPacketizerComponentBase, public Fw::ParamE
     // buffers for filling with telemetry
     BufferEntry m_fillBuffers[MAX_PACKETIZER_PACKETS];
 
+    //! One channel's membership in a single packet.
+    struct PacketRef {
+        FwChanIdType packet;  //!< index into m_fillBuffers
+        FwSizeType offset;    //!< byte offset of this channel within that packet's buffer
+    };
+
     struct TlmEntry {
-        FwChanIdType id;  //!< telemetry id stored in slot
-        // Offsets into packet buffers.
-        // -1 means that channel is not in that packet
-        FwSignedSizeType packetOffset[MAX_PACKETIZER_PACKETS];
-        FwSizeType channelSize;  //!< max serialized size of the channel in bytes
         bool ignored;            //!< ignored channel id
         bool hasValue;           //!< if the entry has received a value at least once
+        FwSizeType channelSize;  //!< max serialized size of the channel in bytes
+        FwChanIdType numPackets; //!< number of valid entries in packets[]
+        //! Packets containing this channel, first numPackets are valid.
+        PacketRef packets[MAX_PACKETIZER_PACKETS];
     };
 
     bool m_configured;  //!< indicates a table has been passed and packets configured
