@@ -1948,7 +1948,7 @@ void TlmPacketizerTester::duplicateChannelIdMatchingSizeTest() {
 
 void TlmPacketizerTester::channelInMaxPacketsTest() {
     this->stockConfiguration();
-    // One channel present in every one of MAX_PACKETIZER_PACKETS packets sets every packetOffset slot of its entry
+    // One channel present in every one of MAX_PACKETIZER_PACKETS packets is tracked once per packet in its entry
     TlmPacketizerChannelEntry sharedList[] = {{10, 4}};
     TlmPacketizerPacket packets[MAX_PACKETIZER_PACKETS]{};
     TlmPacketizerPacketList maxPacketList{};
@@ -2003,10 +2003,9 @@ void TlmPacketizerTester::fullComBufferPacketTest() {
     TlmPacketizerPacket fullPacket = {fullList, 30, 1, FW_NUM_ARRAY_ELEMENTS(fullList)};
     TlmPacketizerPacketList fullPacketList = {{&fullPacket}, 1};
     this->component.setPacketList(fullPacketList, IGNORE_OMIT_LIST, 1);
-    ASSERT_EQ(this->component.m_channels[1].packetOffset[0], LAST_OFFSET);
-    // local copy: ASSERT_NE binds its arguments by reference, which would ODR-use the static constexpr member
-    constexpr FwTlmPacketizeOffsetType notInPacket = TlmPacketizer::NOT_IN_PACKET;
-    ASSERT_NE(this->component.m_channels[1].packetOffset[0], notInPacket);
+    // channel 11 (slot 1) is tracked in exactly one packet, sitting at the last valid offset
+    ASSERT_EQ(this->component.m_channels[1].numPackets, static_cast<FwChanIdType>(1));
+    ASSERT_EQ(this->component.m_channels[1].packets[0].offset, LAST_OFFSET);
 
     Fw::Time ts(5, 6);
     Fw::TlmBuffer buff;
