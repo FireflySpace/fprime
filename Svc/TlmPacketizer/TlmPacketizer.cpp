@@ -305,8 +305,8 @@ void TlmPacketizer ::Run_handler(const FwIndexType portNum, U32 context) {
 
         for (FwIndexType section = 0; section < TelemetrySection::NUM_SECTIONS; section++) {
             PktSendCounters& pktEntryFlags = this->m_packetFlags[static_cast<FwSizeType>(section)][pkt];
-            TlmPacketizer_GroupConfig& entryGroupConfig =
-                this->m_groupConfigs[static_cast<FwSizeType>(section)][entryGroup];
+            // Per-packet override if one is set (via ENABLE/FORCE/CONFIGURE_PACKET*), else the group-derived policy.
+            const Svc::PacketConfig entryGroupConfig = this->effectiveConfig(section, pkt, entryGroup);
 
             // Packet is updated and not REQUESTED (Keep REQUESTED marking to bypass disable checks)
             if (isNewData && pktEntryFlags.updateFlag != UpdateFlag::REQUESTED) {
@@ -535,6 +535,85 @@ void TlmPacketizer ::CONFIGURE_GROUP_RATES_cmdHandler(FwOpcodeType opCode,
     this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
 }
 
+void TlmPacketizer ::GET_PACKET_CONFIG_cmdHandler(FwOpcodeType opCode,
+                                                  U32 cmdSeq,
+                                                  U32 packetId,
+                                                  const Svc::TelemetrySection& section) {
+    FW_ASSERT(section.isValid());
+    if (section < 0 or section >= TelemetrySection::NUM_SECTIONS) {
+        this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::VALIDATION_ERROR);
+        return;
+    }
+    FwChanIdType pkt = 0;
+    if (not this->findPacketIndexById(packetId, pkt)) {
+        this->log_WARNING_LO_UnknownPacketId(packetId);
+        this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::VALIDATION_ERROR);
+        return;
+    }
+    const Svc::PacketConfig eff =
+        this->effectiveConfig(static_cast<FwIndexType>(section.e), pkt, this->m_fillBuffers[pkt].level);
+    Svc::PacketConfigEntry entry;
+    entry.set_packetId(packetId);
+    entry.set_section(section.e);
+    entry.set_config(eff);
+    this->tlmWrite_QueriedPacketConfig(entry);
+    this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
+}
+
+void TlmPacketizer ::ENABLE_PACKET_cmdHandler(FwOpcodeType opCode,
+                                              U32 cmdSeq,
+                                              U32 packetId,
+                                              const Svc::TelemetrySection& section,
+                                              const Fw::Enabled& enable) {
+    FwSizeType s = 0;
+    FwChanIdType pkt = 0;
+    // Validate on ground data (no assert): bad enable / section / unknown id -> VALIDATION_ERROR.
+    if (not enable.isValid() or not this->resolveAndSeedOverride(section, packetId, s, pkt)) {
+        this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::VALIDATION_ERROR);
+        return;
+    }
+    this->m_packetOverride[s][pkt].set_enabled(enable);
+    this->mirrorOverride(section, pkt, packetId);
+    this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
+}
+
+void TlmPacketizer ::FORCE_PACKET_cmdHandler(FwOpcodeType opCode,
+                                             U32 cmdSeq,
+                                             U32 packetId,
+                                             const Svc::TelemetrySection& section,
+                                             const Fw::Enabled& enable) {
+    FwSizeType s = 0;
+    FwChanIdType pkt = 0;
+    if (not enable.isValid() or not this->resolveAndSeedOverride(section, packetId, s, pkt)) {
+        this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::VALIDATION_ERROR);
+        return;
+    }
+    this->m_packetOverride[s][pkt].set_forceEnabled(enable);
+    this->mirrorOverride(section, pkt, packetId);
+    this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
+}
+
+void TlmPacketizer ::CONFIGURE_PACKET_RATES_cmdHandler(FwOpcodeType opCode,
+                                                       U32 cmdSeq,
+                                                       U32 packetId,
+                                                       const Svc::TelemetrySection& section,
+                                                       const Svc::RateLogic& rateLogic,
+                                                       U32 minDelta,
+                                                       U32 maxDelta) {
+    FwSizeType s = 0;
+    FwChanIdType pkt = 0;
+    if (not rateLogic.isValid() or not this->resolveAndSeedOverride(section, packetId, s, pkt)) {
+        this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::VALIDATION_ERROR);
+        return;
+    }
+    Svc::PacketConfig& cfg = this->m_packetOverride[s][pkt];
+    cfg.set_rateLogic(rateLogic);
+    cfg.set_min(minDelta);
+    cfg.set_max(maxDelta);
+    this->mirrorOverride(section, pkt, packetId);
+    this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
+}
+
 void TlmPacketizer::configureSectionGroupRate(
     const Svc::TelemetrySection& section,  //!< Section grouping
     FwChanIdType tlmGroup,                 //!< Group Identifier
@@ -565,6 +644,100 @@ FwIndexType TlmPacketizer::sectionGroupToPort(const FwIndexType section, const F
     // Confirm the output port index is within the valid number of telemetry send ports
     FW_ASSERT(outIndex < TELEMETRY_SEND_PORTS, static_cast<FwAssertArgType>(outIndex));
     return outIndex;
+}
+
+Svc::PacketConfig TlmPacketizer::effectiveConfig(FwIndexType section, FwChanIdType pkt, FwChanIdType group) const {
+    const FwSizeType s = static_cast<FwSizeType>(section);
+    if (this->m_packetOverridden[s][pkt]) {
+        return this->m_packetOverride[s][pkt];
+    }
+    // Not overridden: derive from the group policy for this packet's level (legacy behavior).
+    const TlmPacketizer_GroupConfig& gc = this->m_groupConfigs[s][group];
+    Svc::PacketConfig eff;
+    eff.set_enabled(gc.get_enabled());
+    eff.set_forceEnabled(gc.get_forceEnabled());
+    eff.set_rateLogic(gc.get_rateLogic());
+    eff.set_min(gc.get_min());
+    eff.set_max(gc.get_max());
+    return eff;
+}
+
+bool TlmPacketizer::findPacketIndexById(U32 packetId, FwChanIdType& pkt) const {
+    for (FwChanIdType p = 0; p < this->m_numPackets; p++) {
+        if (this->m_fillBuffers[p].id == packetId) {
+            pkt = p;
+            return true;
+        }
+    }
+    return false;
+}
+
+Svc::PacketConfig TlmPacketizer::defaultPacketConfig() {
+    // seeds the default the first time the packet is overridden, assuming these parameters
+    // were not configured ahead of this packet being enabled: enabled, not forced,
+    // output-on-change, no thresholds.
+    Svc::PacketConfig cfg;
+    cfg.set_enabled(Fw::Enabled(Fw::Enabled::ENABLED));
+    cfg.set_forceEnabled(Fw::Enabled(Fw::Enabled::DISABLED));
+    cfg.set_rateLogic(Svc::RateLogic(Svc::RateLogic::ON_CHANGE_MIN));
+    cfg.set_min(0);
+    cfg.set_max(0);
+    return cfg;
+}
+
+bool TlmPacketizer::resolveAndSeedOverride(const Svc::TelemetrySection& section,
+                                           U32 packetId,
+                                           FwSizeType& s,
+                                           FwChanIdType& pkt) {
+    if (not(section.isValid() and section >= 0 and section < TelemetrySection::NUM_SECTIONS)) {
+        return false;
+    }
+    if (not this->findPacketIndexById(packetId, pkt)) {
+        this->log_WARNING_LO_UnknownPacketId(packetId);
+        return false;
+    }
+    s = static_cast<FwSizeType>(section.e);
+    if (not this->m_packetOverridden[s][pkt]) {
+        this->m_packetOverride[s][pkt] = TlmPacketizer::defaultPacketConfig();
+        this->m_packetOverridden[s][pkt] = true;
+    }
+    return true;
+}
+
+void TlmPacketizer ::configIn_handler(FwIndexType portNum, FwSizeType count, const Svc::PacketConfigBatch& batch) {
+    // load overrides from an external component's persistant storage of the overrides (intended to be used after a reboot)
+    const FwSizeType cap = static_cast<FwSizeType>(Svc::PacketConfigBatch::SIZE);
+    const FwSizeType n = (count < cap) ? count : cap;
+    for (FwSizeType i = 0; i < n; i++) {
+        const Svc::PacketConfigEntry& entry = batch[i];
+        const Svc::TelemetrySection section = entry.get_section();
+        if (not(section.isValid() and section >= 0 and section < TelemetrySection::NUM_SECTIONS)) {
+            continue;
+        }
+        FwChanIdType pkt = 0;
+        if (not this->findPacketIndexById(entry.get_packetId(), pkt)) {
+            this->log_WARNING_LO_UnknownPacketId(entry.get_packetId());
+            continue;
+        }
+        const FwSizeType s = static_cast<FwSizeType>(section.e);
+        this->m_packetOverride[s][pkt] = entry.get_config();
+        this->m_packetOverridden[s][pkt] = true;
+    }
+}
+
+void TlmPacketizer::mirrorOverride(const Svc::TelemetrySection& section, FwChanIdType pkt, U32 packetId) {
+    // persistent storage component should mirror this state; skip if not wired
+    if (not this->isConnected_configOut_OutputPort(0)) {
+        return;
+    }
+    const FwSizeType s = static_cast<FwSizeType>(section.e);
+    Svc::PacketConfigEntry entry;
+    entry.set_packetId(packetId);
+    entry.set_section(section);
+    entry.set_config(this->m_packetOverride[s][pkt]);
+    Svc::PacketConfigBatch batch;
+    batch[0] = entry;
+    this->configOut_out(0, 1, batch);
 }
 
 void TlmPacketizer::missingChannel(FwChanIdType id) {
