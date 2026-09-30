@@ -125,9 +125,23 @@ void runQueueOverflowTest(void);
     //! GET_PACKET_CONFIG test: effective config reported for a known id; unknown id warns
     void getPacketConfigTest(void);
 
+    //! Seeding test: the first per-packet command seeds the override from the packet's current
+    //! effective (group-derived) config, so untouched rate fields carry through
+    void seedFromEffectiveConfigTest(void);
+
+    //! CLEAR_PACKET_OVERRIDE test: an override is cleared back to group behavior and the cleared
+    //! state is mirrored out configOut; unknown id -> VALIDATION_ERROR + warning
+    void clearPacketOverrideTest(void);
+
+    //! configIn cap test: a batch offering more than the capacity drops the extras and warns
+    void configInBatchCapTest(void);
+
     //! Helper to set the component into a stock-configuration regardless of default config
     //!
     void stockConfiguration();
+
+    //! Helper to populate the six channels backing packets id 4 and id 8 ahead of a Run
+    void fillPacketChannels();
 
   private:
     // ----------------------------------------------------------------------
@@ -148,8 +162,8 @@ void runQueueOverflowTest(void);
                               ) override;
 
     //! Handler for from_configOut: captures the per-packet override mirror sent to external component
-    void from_configOut_handler(FwIndexType portNum,                //!< The port number
-                                FwSizeType count,                   //!< Number of valid entries
+    void from_configOut_handler(FwIndexType portNum,                 //!< The port number
+                                FwSizeType count,                    //!< Number of valid entries
                                 const Svc::PacketConfigBatch& batch  //!< The mirrored overrides
                                 ) override;
 
@@ -193,8 +207,8 @@ void runQueueOverflowTest(void);
     FwSizeType m_portOutInvokes[Svc::TELEMETRY_SEND_PORTS]{};
 
     //! configOut mirror capture (per-packet override sent to an external component)
-    U32 m_configOutInvokes{0};              //!< Number of configOut invocations
-    FwSizeType m_lastConfigCount{0};        //!< Count arg of the most recent configOut invocation
+    U32 m_configOutInvokes{0};                   //!< Number of configOut invocations
+    FwSizeType m_lastConfigCount{0};             //!< Count arg of the most recent configOut invocation
     Svc::PacketConfigBatch m_lastConfigBatch{};  //!< Batch of the most recent configOut invocation
 };
 
