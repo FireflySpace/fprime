@@ -49,6 +49,12 @@ class Tester {
     //! File name format error
     void FileNameFormatError();
 
+    //! Overflow hook: full queue drops the DP and returns its buffer
+    void OverflowHook();
+
+    //! Overflow with an unparseable buffer (unknown-id sentinel)
+    void OverflowHookUnknownId();
+
     //! File open error
     void FileOpenError();
 

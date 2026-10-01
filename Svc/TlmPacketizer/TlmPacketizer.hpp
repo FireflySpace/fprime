@@ -163,22 +163,37 @@ class TlmPacketizer final : public TlmPacketizerComponentBase, public Fw::ParamE
         FwChanIdType id;       //!< channel id
         FwChanIdType level;    //!< channel level
         bool updated;          //!< if packet had any updates during last cycle
+        Os::Mutex lock;        //!< used to lock access to this particular packet buffer
+
+        // Re-Implement the copy the sans lock version got for free
+        BufferEntry& operator=(const BufferEntry& other) {
+            this->buffer = other.buffer;
+            this->latestTime = other.latestTime;
+            this->id = other.id;
+            this->level = other.level;
+            this->updated = other.updated;
+
+            return *this;
+        }
     };
 
     // buffers for filling with telemetry
     BufferEntry m_fillBuffers[MAX_PACKETIZER_PACKETS];
 
-    struct TlmEntry {
-        FwChanIdType id;  //!< telemetry id stored in slot
-        // Offsets into packet buffers.
-        // -1 means that channel is not in that packet
-        FwSignedSizeType packetOffset[MAX_PACKETIZER_PACKETS];
-        FwSizeType channelSize;  //!< max serialized size of the channel in bytes
-        bool ignored;            //!< ignored channel id
-        bool hasValue;           //!< if the entry has received a value at least once
+    //! One channel's membership in a single packet.
+    struct PacketRef {
+        FwChanIdType packet;  //!< index into m_fillBuffers
+        FwSizeType offset;    //!< byte offset of this channel within that packet's buffer
     };
 
-    Os::Mutex m_lock;  //!< used to lock access to packet buffers
+    struct TlmEntry {
+        bool ignored;            //!< ignored channel id
+        bool hasValue;           //!< if the entry has received a value at least once
+        FwSizeType channelSize;  //!< max serialized size of the channel in bytes
+        FwChanIdType numPackets; //!< number of valid entries in packets[]
+        //! Packets containing this channel, first numPackets are valid.
+        PacketRef packets[MAX_PACKETIZER_PACKETS];
+    };
 
     bool m_configured;  //!< indicates a table has been passed and packets configured
 

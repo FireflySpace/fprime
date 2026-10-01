@@ -466,6 +466,49 @@ void TestState ::action__BufferSendIn__FileWriteError() {
 // Non-rule tests
 // ----------------------------------------------------------------------
 
+void TestState ::testBufferSendInOverflowHook() {
+    this->clearHistory();
+    // Fill the message queue without dispatching so the next invoke overflows
+    for (FwSizeType i = 0; i < DpWriterTester::TEST_INSTANCE_QUEUE_DEPTH; i++) {
+        Fw::Buffer buffer = this->abstractState.getDpBuffer();
+        this->invoke_to_bufferSendIn(0, buffer);
+    }
+    // Queue full: this invoke triggers the overflow hook, which must not assert
+    Fw::Buffer overflowBuffer = this->abstractState.getDpBuffer();
+    this->invoke_to_bufferSendIn(0, overflowBuffer);
+    // The DP is dropped (nothing written or notified), a throttled event records it,
+    // and its buffer is returned to the pool
+    Fw::DpContainer overflowContainer;
+    overflowContainer.setBuffer(overflowBuffer);
+    ASSERT_EQ(overflowContainer.deserializeHeader(), Fw::FW_SERIALIZE_OK);
+    ASSERT_EVENTS_SIZE(1);
+    ASSERT_EVENTS_BufferDropped_SIZE(1);
+    ASSERT_EVENTS_BufferDropped(0, overflowContainer.getId(), overflowBuffer.getSize());
+    ASSERT_from_dpWrittenOut_SIZE(0);
+    ASSERT_from_procBufferSendOut_SIZE(0);
+    ASSERT_from_deallocBufferSendOut_SIZE(1);
+    ASSERT_from_deallocBufferSendOut(0, overflowBuffer);
+}
+
+void TestState ::testBufferSendInOverflowHookUnknownId() {
+    this->clearHistory();
+    // Fill the message queue without dispatching so the next invoke overflows
+    for (FwSizeType i = 0; i < DpWriterTester::TEST_INSTANCE_QUEUE_DEPTH; i++) {
+        Fw::Buffer buffer = this->abstractState.getDpBuffer();
+        this->invoke_to_bufferSendIn(0, buffer);
+    }
+    // Overflow with a valid buffer too small to hold a header: the hook can't parse an id,
+    // so it emits the max() sentinel (not a real id 0) and still returns the buffer
+    const FwSizeType smallSize = Fw::DpContainer::MIN_PACKET_SIZE - 1;
+    Fw::Buffer smallBuffer(this->abstractState.m_bufferData, static_cast<Fw::Buffer::SizeType>(smallSize));
+    this->invoke_to_bufferSendIn(0, smallBuffer);
+    ASSERT_EVENTS_SIZE(1);
+    ASSERT_EVENTS_BufferDropped_SIZE(1);
+    ASSERT_EVENTS_BufferDropped(0, std::numeric_limits<FwDpIdType>::max(), smallSize);
+    ASSERT_from_deallocBufferSendOut_SIZE(1);
+    ASSERT_from_deallocBufferSendOut(0, smallBuffer);
+}
+
 void TestState ::testFileNameFormatError() {
     // Configure a prefix that fills the file name string, forcing a format overflow
     Fw::FileNameString prefix;
@@ -506,6 +549,16 @@ void Tester::BufferTooSmallForPacket() {
 
 void Tester::FileNameFormatError() {
     this->testState.testFileNameFormatError();
+    this->testState.printEvents();
+}
+
+void Tester::OverflowHook() {
+    this->testState.testBufferSendInOverflowHook();
+    this->testState.printEvents();
+}
+
+void Tester::OverflowHookUnknownId() {
+    this->testState.testBufferSendInOverflowHookUnknownId();
     this->testState.printEvents();
 }
 

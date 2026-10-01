@@ -28,13 +28,13 @@ module Svc {
     async input port controlIn: EnableSection
 
     @ Ping input port
-    async input port pingIn: Svc.Ping
+    async input port pingIn: Svc.Ping drop
 
     @ Ping output port
     output port pingOut: Svc.Ping
 
     @ Run port for starting packet send cycle
-    async input port Run: Svc.Sched
+    async input port Run: Svc.Sched drop
 
     @ Input configuration port
     async input port configureSectionGroupRate: ConfigureGroupRate
