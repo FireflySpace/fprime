@@ -26,6 +26,11 @@ TEST(Nominal, test_schedIn) {
     tester.test_schedIn();
 }
 
+TEST(Nominal, test_send_event_param) {
+    Svc::VersionTester tester;
+    tester.test_sendEventParam();
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
