@@ -7,10 +7,23 @@
 #ifndef FPYSEQUENCER_TESTER_HPP
 #define FPYSEQUENCER_TESTER_HPP
 
+#include <vector>
+
 #include "FpySequencerGTestBase.hpp"
 #include "Svc/FpySequencer/FpySequencer.hpp"
 
 namespace Svc {
+
+//! FpySequencer subclass that records the indices passed to onStatementDispatched,
+//! so a test can assert the coverage hook fires per dispatched statement.
+class CoverageProbe : public FpySequencer {
+  public:
+    using FpySequencer::FpySequencer;
+    std::vector<U32> dispatched;
+
+  protected:
+    void onStatementDispatched(U32 index) override { this->dispatched.push_back(index); }
+};
 
 class FpySequencerTester : public FpySequencerGTestBase, public ::testing::Test {
     // ----------------------------------------------------------------------
@@ -55,6 +68,23 @@ class FpySequencerTester : public FpySequencerGTestBase, public ::testing::Test 
     //!
     FpySequencer cmp;
     FpySequencer& component;  // for compatibility
+
+    //! A separate recording instance for the onStatementDispatched coverage hook,
+    //! kept apart from cmp so existing tests are untouched.
+    CoverageProbe covProbe{"CoverageProbe"};
+
+    //! Init covProbe and wire the one port dispatchStatement needs (timeCaller),
+    //! sharing the tester's time input (many outputs -> one input is fine).
+    void probe_init() {
+        this->covProbe.init(TEST_INSTANCE_QUEUE_DEPTH, 1);
+        this->covProbe.set_timeCaller_OutputPort(0, this->get_from_timeCaller(0));
+    }
+
+    //! Load a sequence into covProbe (friend access to its private member).
+    Fpy::Sequence& probe_sequenceObj() { return this->covProbe.m_sequenceObj; }
+
+    //! Dispatch one statement on covProbe.
+    Signal probe_dispatch() { return this->covProbe.dispatchStatement(); }
 
     // dispatches events from the queue until the component reaches the given state
     void dispatchUntilState(State state, U32 bound = 100);
