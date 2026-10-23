@@ -845,6 +845,12 @@ class FpySequencer : public FpySequencerComponentBase {
     // dispatches a command, returns whether successful or not
     Fw::Success sendCmd(FwOpcodeType opcode, const U8* argBuf, FwSizeType argBufSize);
 
+  protected:
+    //! Called after each statement dispatches, with its (just-executed) index.
+    //! Default no-op; override to observe execution, e.g. for coverage.
+    virtual void onStatementDispatched(U32 index) { (void)index; }
+
+  private:
     // returns the index of the current statement
     U32 currentStatementIdx();
 
