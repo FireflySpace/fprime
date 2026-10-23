@@ -50,6 +50,10 @@ Signal FpySequencer::dispatchStatement() {
 
     this->m_statementsDispatched++;
 
+#ifdef FPY_COVERAGE
+    this->onStatementDispatched(this->currentStatementIdx());
+#endif
+
     return Signal::result_dispatchStatement_success;
 }
 
