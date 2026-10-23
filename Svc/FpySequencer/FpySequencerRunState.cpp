@@ -50,9 +50,8 @@ Signal FpySequencer::dispatchStatement() {
 
     this->m_statementsDispatched++;
 
-#ifdef FPY_COVERAGE
+    // hook for observing statement execution (e.g. coverage); no-op by default
     this->onStatementDispatched(this->currentStatementIdx());
-#endif
 
     return Signal::result_dispatchStatement_success;
 }
