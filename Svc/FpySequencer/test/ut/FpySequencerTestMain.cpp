@@ -3747,6 +3747,17 @@ TEST_F(FpySequencerTester, dispatchStatement) {
     ASSERT_DEATH_IF_SUPPORTED(tester_dispatchStatement(), "Assert: ");
 }
 
+TEST_F(FpySequencerTester, onStatementDispatchedFiresPerStatement) {
+    probe_init();
+    add_NO_OP();
+    add_NO_OP();
+    probe_sequenceObj() = seq;
+    probe_dispatch();
+    probe_dispatch();
+    covProbe.deinit();  // release the queue init() allocated (LeakSanitizer)
+    ASSERT_EQ(covProbe.dispatched, (std::vector<U32>{0, 1}));
+}
+
 // caught one bug
 TEST_F(FpySequencerTester, deserialize_waitRel) {
     FpySequencer::DirectiveUnion actual;
