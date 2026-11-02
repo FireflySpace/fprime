@@ -75,6 +75,76 @@ void PrmDbImpl::readParamFile() {
     (void)readParamFileImpl(this->m_fileName, PrmDbType::DB_ACTIVE);
 }
 
+void PrmDbImpl::loadSafeDefaults(const U8* data, FwSizeType len) {
+    // Parse an in-memory .dat image (same format readParamFileImpl reads) and seed
+    // ACTIVE with any id not already present, so a good runtime file always wins.
+    if ((data == nullptr) || (len < sizeof(U32))) {
+        return;
+    }
+
+    WorkingBuffer work;
+    FwSizeType pos = sizeof(U32);  // skip the 4-byte CRC header
+    U32 recordNum = 0;
+
+    while (pos < len) {
+        const U8 delimiter = data[pos];
+        pos += sizeof(delimiter);
+        if (PRMDB_ENTRY_DELIMITER != delimiter) {
+            this->log_WARNING_HI_PrmFileReadError(PrmReadError::DELIMITER_VALUE, static_cast<I32>(recordNum),
+                                                  delimiter);
+            return;
+        }
+
+        if (pos + sizeof(U32) > len) {
+            this->log_WARNING_HI_PrmFileReadError(PrmReadError::RECORD_SIZE, static_cast<I32>(recordNum),
+                                                  static_cast<I32>(len - pos));
+            return;
+        }
+        U32 recordSize = 0;
+        (void)std::memcpy(work.getBuffAddr(), &data[pos], sizeof(U32));
+        Fw::SerializeStatus serStat = work.setBuffLen(sizeof(U32));
+        FW_ASSERT(Fw::FW_SERIALIZE_OK == serStat, static_cast<FwAssertArgType>(serStat));
+        work.resetDeser();
+        serStat = work.deserializeTo(recordSize);
+        FW_ASSERT(Fw::FW_SERIALIZE_OK == serStat, static_cast<FwAssertArgType>(serStat));
+        pos += sizeof(U32);
+
+        if ((recordSize < sizeof(FwPrmIdType)) || (recordSize > FW_PARAM_BUFFER_MAX_SIZE + sizeof(FwPrmIdType))) {
+            this->log_WARNING_HI_PrmFileReadError(PrmReadError::RECORD_SIZE_VALUE, static_cast<I32>(recordNum),
+                                                  static_cast<I32>(recordSize));
+            return;
+        }
+        if (pos + recordSize > len) {
+            this->log_WARNING_HI_PrmFileReadError(PrmReadError::PARAMETER_VALUE, static_cast<I32>(recordNum),
+                                                  static_cast<I32>(len - pos));
+            return;
+        }
+
+        FwPrmIdType parameterId = 0;
+        (void)std::memcpy(work.getBuffAddr(), &data[pos], sizeof(FwPrmIdType));
+        serStat = work.setBuffLen(sizeof(FwPrmIdType));
+        FW_ASSERT(Fw::FW_SERIALIZE_OK == serStat, static_cast<FwAssertArgType>(serStat));
+        work.resetDeser();
+        serStat = work.deserializeTo(parameterId);
+        FW_ASSERT(Fw::FW_SERIALIZE_OK == serStat, static_cast<FwAssertArgType>(serStat));
+
+        const FwSizeType valueSize = static_cast<FwSizeType>(recordSize) - sizeof(FwPrmIdType);
+        Fw::ParamBuffer value;
+        serStat = value.setBuffLen(static_cast<Fw::Serializable::SizeType>(valueSize));
+        FW_ASSERT(Fw::FW_SERIALIZE_OK == serStat, static_cast<FwAssertArgType>(serStat));
+        (void)std::memcpy(value.getBuffAddr(), &data[pos + sizeof(FwPrmIdType)], valueSize);
+
+        pos += recordSize;
+        recordNum++;
+
+        Fw::ParamBuffer existing;
+        if (this->m_activeDb->find(parameterId, existing).e == Fw::Success::SUCCESS) {
+            continue;  // file already supplied this id; do not overwrite
+        }
+        (void)this->updateAddPrmImpl(parameterId, value, PrmDbType::DB_ACTIVE);
+    }
+}
+
 //! ----------------------------------------------------------------------
 //! Port & Command Handlers
 //! ----------------------------------------------------------------------

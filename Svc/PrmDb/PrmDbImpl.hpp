@@ -74,6 +74,9 @@ class PrmDbImpl final : public PrmDbComponentBase {
     //!
     void readParamFile();  // NOTE: Assumed to run at initialization time. No guard of data structure.
 
+    //! Seed flight-safe defaults into ACTIVE for ids absent from the runtime file (missing-only; run at init).
+    void loadSafeDefaults(const U8* data, FwSizeType len);
+
     //!  \brief PrmDb destructor
     //!
     virtual ~PrmDbImpl();
