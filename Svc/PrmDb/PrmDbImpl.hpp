@@ -67,12 +67,22 @@ class PrmDbImpl final : public PrmDbComponentBase {
     //!  \param directory directory that all parameter file accesses are restricted to.
     void configureSandbox(const char* directory);
 
+    // Enum to return status of parameter file load
+    enum PrmLoadStatus {
+        SUCCESS,  //!< File load successful
+        ERROR,    //!< File load error
+    };
+
     //!  \brief PrmDb file read function
     //!
     //!  The readFile function reads the set of parameters from the file passed in to
     //!  the constructor.
     //!
-    void readParamFile();  // NOTE: Assumed to run at initialization time. No guard of data structure.
+    PrmLoadStatus readParamFile();  // NOTE: Assumed to run at initialization time. No guard of data structure.
+
+    //! Seed flight-safe defaults into ACTIVE: missing-only backfill after a good file load,
+    //! or a wholesale replace (all-or-nothing) after a failed/absent load. Run at init.
+    void loadSafeDefaults(const U8* data, FwSizeType len, bool fileLoadSucceeded);
 
     //!  \brief PrmDb destructor
     //!
@@ -84,12 +94,6 @@ class PrmDbImpl final : public PrmDbComponentBase {
         PARAM_ADDED,    //!< Parameter added to database
         PARAM_UPDATED,  //!< Parameter already in database, updated parameter
         MAX_PARAM_UPDATE_TYPES
-    };
-
-    // Enum to return status of parameter file load
-    enum PrmLoadStatus {
-        SUCCESS,  //!< File load successful
-        ERROR,    //!< File load error
     };
 
   protected:
