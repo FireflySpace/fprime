@@ -17,9 +17,11 @@
 #include "Fw/Prm/PrmExternalTypes.hpp"
 #include "Fw/Types/EnabledEnumAc.hpp"
 #include "Os/Mutex.hpp"
+#include "Svc/TlmPacketizer/GroupConfigEntrySerializableAc.hpp"
 #include "Svc/TlmPacketizer/PacketConfigEntrySerializableAc.hpp"
 #include "Svc/TlmPacketizer/TlmPacketizerComponentAc.hpp"
 #include "Svc/TlmPacketizer/TlmPacketizerTypes.hpp"
+#include "Svc/TlmPacketizer/TlmPacketizer_SectionConfigsArrayAc.hpp"
 #include "Svc/TlmPacketizer/TlmPacketizer_SectionPacketOverridesArrayAc.hpp"
 #include "Svc/TlmPacketizer/TlmPacketizer_TelemetrySendPortMapArrayAc.hpp"
 #include "TlmPacketizerConfig/FppConstantsAc.hpp"
@@ -109,6 +111,16 @@ class TlmPacketizer final : public TlmPacketizerComponentBase, public Fw::ParamE
                                         Fw::Buffer& fwBuffer  //!< packetOverrideOut mirror buffer being returned
                                         ) override;
 
+    //! Handler for input port groupConfigIn
+    void groupConfigIn_handler(FwIndexType portNum,  //!< The port number
+                               Fw::Buffer& fwBuffer  //!< Serialized GroupConfigEntry records to apply
+                               ) override;
+
+    //! Handler for input port groupConfigReturnIn
+    void groupConfigReturnIn_handler(FwIndexType portNum,  //!< The port number
+                                     Fw::Buffer& fwBuffer  //!< groupConfigOut mirror buffer being returned
+                                     ) override;
+
     //! Handler for input port TlmGet
     Fw::TlmValid TlmGet_handler(FwIndexType portNum,  //!< The port number
                                 FwChanIdType id,      //!< Telemetry Channel ID
@@ -167,6 +179,15 @@ class TlmPacketizer final : public TlmPacketizerComponentBase, public Fw::ParamE
                                       const Svc::TelemetrySection& section,  //!< Section to query
                                       U32 packetId                           //!< Packet identifier
                                       ) override;
+
+    //! Handler implementation for command GET_GROUP_CONFIG
+    //!
+    //! Emits the group's configuration as the GroupConfigReport event.
+    void GET_GROUP_CONFIG_cmdHandler(FwOpcodeType opCode,                   //!< The opcode
+                                     U32 cmdSeq,                            //!< The command sequence number
+                                     const Svc::TelemetrySection& section,  //!< Section to query
+                                     FwChanIdType tlmGroup                  //!< Group identifier
+                                     ) override;
 
     //! Handler implementation for command OVERRIDE_PACKET_SEND
     //!
@@ -234,10 +255,10 @@ class TlmPacketizer final : public TlmPacketizerComponentBase, public Fw::ParamE
     };
 
     struct TlmEntry {
-        bool ignored;            //!< ignored channel id
-        bool hasValue;           //!< if the entry has received a value at least once
-        FwSizeType channelSize;  //!< max serialized size of the channel in bytes
-        FwChanIdType numPackets; //!< number of valid entries in packets[]
+        bool ignored;             //!< ignored channel id
+        bool hasValue;            //!< if the entry has received a value at least once
+        FwSizeType channelSize;   //!< max serialized size of the channel in bytes
+        FwChanIdType numPackets;  //!< number of valid entries in packets[]
         //! Packets containing this channel, first numPackets are valid.
         PacketRef packets[MAX_PACKETIZER_PACKETS];
     };
@@ -330,6 +351,8 @@ class TlmPacketizer final : public TlmPacketizerComponentBase, public Fw::ParamE
                                 U32 packetId,
                                 const Svc::PacketOverrideConfig& requested);
     Fw::Success mirrorOverride(const Svc::TelemetrySection& section, FwChanIdType pkt);
+    //! Mirror one group's config to groupConfigOut; no-op SUCCESS when the mirror port is unconnected
+    Fw::Success mirrorGroupConfig(const Svc::TelemetrySection& section, FwChanIdType group);
 
   private:
     FwSizeType m_numChannels;  //!< number of channels being packetized

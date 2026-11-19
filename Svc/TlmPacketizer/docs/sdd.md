@@ -117,7 +117,7 @@ Telemetry sections are enabled and disabled upon spacecraft state transitions th
 * `SEND_NEVER`: never send.
 
 * `ENABLE_SECTION` / `controlIn()`: Enable / Disable telemetry sections.
-* `CONFIGURE_GROUP_SEND`: Set the send state of a group within a section; the new state is reported with the `GroupSendStateSet` event and the `GroupConfigs` channel.
+* `CONFIGURE_GROUP_SEND`: Set the send state of a group within a section; the new state is reported with the `GroupSendStateSet` event and mirrored to `groupConfigOut` for persistence. Query a group's current configuration with `GET_GROUP_CONFIG` (reported as the `GroupConfigReport` event).
 * `SET_LEVEL`: Groups at or below the level are set to `INHERIT_FROM_PARENT`, groups above it to `SEND_NEVER`; any `SEND_ALWAYS` / `SEND_NEVER` previously set with `CONFIGURE_GROUP_SEND` is replaced (packet overrides are not touched).
 
 Disabling groups / sections will freeze the group's counter between sent output.
@@ -359,3 +359,4 @@ Date | Description
 10/26/2026 | `TlmSendState` replaces enabled/force/SILENCED; per-field packet overrides (`PacketOverrideType`); `CONFIGURE_*_SEND` commands; reload buffers returned on `packetOverrideReturnOut`. **Migration:** the serialized shape of `SECTION_CONFIGS` changed (`GroupConfig` → `TlmSendConfig`); a saved value of the old shape is rejected at load (`FW_DESERIALIZE_SIZE_MISMATCH`) and the defaults apply, so regenerate or re-save the parameter database
 10/26/2026 | Renamed CONFIGURE_PACKET_SEND/RATES to OVERRIDE_PACKET_SEND/RATES; added packetOverrideReturnIn for mirror buffers
 10/27/2026 | Buffer lock taken with `Os::ScopeLock`; `Run` snapshots only the packet buffer and time tag under the lock; new configuration type `FwTlmPacketizeOffsetType` (default `U16`) types the per-channel packet offsets. **Migration:** a project that overrides `TlmPacketizerCfg.fpp` must add `type FwTlmPacketizeOffsetType = U16` to its copy (the generated `FwTlmPacketizeOffsetTypeAliasAc.h` is included by `TlmPacketizer.hpp`)
+11/18/2026 | De-monolithed the per-group config: removed the `SECTION_CONFIGS` external param and the `GroupConfigs` telemetry channel (each serialized the whole `[NUM_SECTIONS][NUM_GROUPS]` array into one `FW_*_BUFFER_MAX_SIZE` buffer, capping groups at ~100). Per-group config now persists as one `GroupConfigEntry` record per change over the `groupConfigOut`/`groupConfigIn` BufferSend mirror (same pattern as per-packet overrides) and is queried with `GET_GROUP_CONFIG` → `GroupConfigReport`. The mirror ports are optional (unconnected = in-memory defaults only). **Migration:** group send/rate config no longer loads from PrmDb; wire the `groupConfig*` mirror to a persistence component to retain it across reboot

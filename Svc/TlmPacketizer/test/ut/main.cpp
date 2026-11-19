@@ -144,10 +144,10 @@ TEST(TestNominal, sectionEnabledParameterTest) {
     tester.sectionEnabledParameterTest();
 }
 
-TEST(TestNominal, sectionConfigParameterTest) {
-    TEST_CASE(100.1.12, "Test Section Config Parameter");
+TEST(TestNominal, groupConfigTest) {
+    TEST_CASE(100.1.12, "Group config: command set, report, and reload");
     Svc::TlmPacketizerTester tester;
-    tester.sectionConfigParameterTest();
+    tester.groupConfigTest();
 }
 
 TEST(TestNominal, PerPacketOverrideTest) {
@@ -219,7 +219,7 @@ TEST(TestNominal, SendStateResolutionTest) {
 }
 
 TEST(TestNominal, StaleParameterShapeTest) {
-    TEST_CASE(100.1.25, "SECTION_CONFIGS value of a different serialized shape is rejected at load");
+    TEST_CASE(100.1.25, "SECTION_ENABLED value of a different serialized shape is rejected at load");
     Svc::TlmPacketizerTester tester;
     tester.staleParameterShapeTest();
 }
