@@ -33,6 +33,13 @@ module Svc {
     override: PacketOverrideConfig     @< The override
   }
 
+  @ A single per-group config record: mirrored on groupConfigOut, reloaded from groupConfigIn, reported by GET_GROUP_CONFIG. One record per group serializes independently, so group config is not bounded by a single parameter buffer.
+  struct GroupConfigEntry {
+    section: TelemetrySection          @< Section the config applies to
+    tlmGroup: FwChanIdType             @< Group identifier
+    config: TlmSendConfig              @< The group's send policy
+  }
+
   @ A component for storing telemetry
   active component TlmPacketizer {
     # ----------------------------------------------------------------------
@@ -81,6 +88,18 @@ module Svc {
 
     @ Per-packet override reload from the persistence component.
     async input port packetOverrideIn: Fw.BufferSend
+
+    @ Per-group config mirror to an external persistence component (one GroupConfigEntry record per change)
+    output port groupConfigOut: Fw.BufferSend
+
+    @ Return of a groupConfigOut mirror buffer from the persistence component; handed back to deallocate
+    sync input port groupConfigReturnIn: Fw.BufferSend
+
+    @ Return groupConfigIn reload buffers to the persistence component that sent them
+    output port groupConfigReturnOut: Fw.BufferSend
+
+    @ Per-group config reload from the persistence component
+    async input port groupConfigIn: Fw.BufferSend
 
     @ Telemetry input port
     sync input port TlmRecv: Fw.Tlm
@@ -193,10 +212,15 @@ module Svc {
                                        ) \
       opcode 8
 
+    @ Report a group's configuration (GroupConfigReport event)
+    async command GET_GROUP_CONFIG(
+                                    section: TelemetrySection   @< Section to query
+                                    tlmGroup: FwChanIdType      @< Group identifier
+                                  ) \
+      opcode 9
+
     @ Parameter to control section enable flags
     external param SECTION_ENABLED: SectionEnabled default TELEMETRY_SECTION_ENABLED_DEFAULTS
-    @ Parameter to control section configuration
-    external param SECTION_CONFIGS: SectionConfigs default TELEMETRY_SECTION_DEFAULTS
 
     # ----------------------------------------------------------------------
     # Events
@@ -243,6 +267,7 @@ module Svc {
       id 4 \
       format "Could not find packet ID {}"
 
+    @ A section's enable could not be set because the section is unconfigurable
     event SectionUnconfigurable(
                                 section: TelemetrySection @< The Section
                                 enable: Fw.Enabled        @< Attempted Configuration
@@ -341,12 +366,38 @@ module Svc {
       id 15 \
       format "Section {} group {} send state set to {}"
 
+    @ A group's configuration, emitted in response to GET_GROUP_CONFIG
+    event GroupConfigReport(
+                             section: TelemetrySection   @< The section queried
+                             tlmGroup: FwChanIdType      @< The group id
+                             config: TlmSendConfig       @< The group's send policy
+                           ) \
+      severity activity high \
+      id 16 \
+      format "Group config: section {} group {} config {}"
+
+    @ A groupConfigIn reload record was skipped: section or group out of range
+    event GroupReloadRecordSkipped(
+                                    section: TelemetrySection @< The section in the record
+                                    tlmGroup: FwChanIdType    @< The group in the record
+                                  ) \
+      severity warning low \
+      id 17 \
+      format "groupConfigIn reload record skipped: section {} group {} out of range"
+
+    @ A groupConfigIn reload buffer was malformed: a record failed to deserialize; later records were not applied
+    event GroupConfigReloadFailed(
+                                   status: Fw.DeserialStatus @< The deserialization status that ended the reload
+                                 ) \
+      severity warning high \
+      id 18 \
+      format "groupConfigIn reload failed with status {}"
+
     # ----------------------------------------------------------------------
     # Telemetry
     # ----------------------------------------------------------------------
 
-    @ Telemetry send level
-    telemetry GroupConfigs: SectionConfigs id 0
+    @ Per-section enable flags
     telemetry SectionEnabled: SectionEnabled id 1
 
     array TelemetrySendSection = [NUM_CONFIGURABLE_TLMPACKETIZER_GROUPS] FwIndexType

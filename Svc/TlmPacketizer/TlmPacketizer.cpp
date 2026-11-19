@@ -417,12 +417,14 @@ void TlmPacketizer ::SET_LEVEL_cmdHandler(const FwOpcodeType opCode, const U32 c
         return;
     }
     for (FwIndexType section = 0; section < TelemetrySection::NUM_SECTIONS; section++) {
+        const Svc::TelemetrySection sectionEnum(static_cast<Svc::TelemetrySection::T>(section));
         for (FwChanIdType group = 0; group < NUM_CONFIGURABLE_TLMPACKETIZER_GROUPS; group++) {
             this->m_groupConfigs[static_cast<FwSizeType>(section)][group].set_sendState(
                 group <= level ? Svc::TlmSendState::INHERIT_FROM_PARENT : Svc::TlmSendState::SEND_NEVER);
+            // best-effort persistence mirror; no-op when groupConfigOut is unconnected
+            (void)this->mirrorGroupConfig(sectionEnum, group);
         }
     }
-    this->tlmWrite_GroupConfigs(this->m_groupConfigs);
     this->log_ACTIVITY_HI_LevelSet(level);
     this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
 }
@@ -475,7 +477,7 @@ void TlmPacketizer ::CONFIGURE_GROUP_SEND_cmdHandler(FwOpcodeType opCode,
         return;
     }
     this->m_groupConfigs[section][tlmGroup].set_sendState(sendState);
-    this->tlmWrite_GroupConfigs(this->m_groupConfigs);
+    (void)this->mirrorGroupConfig(section, tlmGroup);
     this->log_ACTIVITY_HI_GroupSendStateSet(section, tlmGroup, sendState);
     this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
 }
@@ -509,6 +511,20 @@ void TlmPacketizer ::GET_PACKET_CONFIG_cmdHandler(FwOpcodeType opCode,
                                                  this->effectiveConfig(static_cast<FwIndexType>(section.e), pkt));
     }
     this->cmdResponse_out(opCode, cmdSeq, TlmPacketizer::toCmdResponse(status));
+}
+
+void TlmPacketizer ::GET_GROUP_CONFIG_cmdHandler(FwOpcodeType opCode,
+                                                 U32 cmdSeq,
+                                                 const Svc::TelemetrySection& section,
+                                                 FwChanIdType tlmGroup) {
+    if (not section.isValid() or section < 0 or section >= TelemetrySection::NUM_SECTIONS or
+        tlmGroup > MAX_CONFIGURABLE_TLMPACKETIZER_GROUP) {
+        this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::VALIDATION_ERROR);
+        return;
+    }
+    this->log_ACTIVITY_HI_GroupConfigReport(section, tlmGroup,
+                                            this->m_groupConfigs[static_cast<FwSizeType>(section.e)][tlmGroup]);
+    this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
 }
 
 void TlmPacketizer ::OVERRIDE_PACKET_SEND_cmdHandler(FwOpcodeType opCode,
@@ -559,7 +575,7 @@ void TlmPacketizer::configureSectionGroupRate(
     FW_ASSERT(tlmGroup <= MAX_CONFIGURABLE_TLMPACKETIZER_GROUP);
 
     this->m_groupConfigs[section][tlmGroup].set_rates(Svc::RateConfig(rateLogic, minDelta, maxDelta));
-    this->tlmWrite_GroupConfigs(this->m_groupConfigs);
+    (void)this->mirrorGroupConfig(section, tlmGroup);
 }
 
 FwIndexType TlmPacketizer::sectionGroupToPort(const FwIndexType section, const FwSizeType group) {
@@ -788,6 +804,77 @@ Fw::Success TlmPacketizer::mirrorOverride(const Svc::TelemetrySection& section, 
     return Fw::Success::SUCCESS;
 }
 
+Fw::Success TlmPacketizer::mirrorGroupConfig(const Svc::TelemetrySection& section, FwChanIdType group) {
+    // persistent storage component should mirror this state; skip if not wired
+    if (not this->isConnected_groupConfigOut_OutputPort(0)) {
+        return Fw::Success::SUCCESS;
+    }
+    // SDD requires the whole mirror path wired or none: no allocator cannot persist, no deallocator cannot free
+    FW_ASSERT(this->isConnected_allocate_OutputPort(0));
+    FW_ASSERT(this->isConnected_deallocate_OutputPort(0));
+    const FwSizeType sectionIndex = static_cast<FwSizeType>(section.e);
+    const Svc::GroupConfigEntry entry(section, group, this->m_groupConfigs[sectionIndex][group]);
+    const FwSizeType entrySize = static_cast<FwSizeType>(Svc::GroupConfigEntry::SERIALIZED_SIZE);
+    Fw::Buffer buffer = this->allocate_out(0, entrySize);
+    if (not buffer.isValid()) {
+        this->log_WARNING_HI_ConfigMirrorAllocFailed();
+        return Fw::Success::FAILURE;
+    }
+    FW_ASSERT(static_cast<FwSizeType>(buffer.getSize()) >= entrySize, static_cast<FwAssertArgType>(buffer.getSize()));
+    auto serializer = buffer.getSerializer();
+    const Fw::SerializeStatus status = serializer.serializeFrom(entry);
+    FW_ASSERT(status == Fw::FW_SERIALIZE_OK, static_cast<FwAssertArgType>(status));
+    buffer.setSize(static_cast<Fw::Buffer::SizeType>(entrySize));
+    this->groupConfigOut_out(0, buffer);
+    return Fw::Success::SUCCESS;
+}
+
+void TlmPacketizer ::groupConfigIn_handler(FwIndexType portNum, Fw::Buffer& fwBuffer) {
+    // Reload per-group configs from the persistence component: one GroupConfigEntry record after another
+    if (fwBuffer.isValid()) {
+        auto deserializer = fwBuffer.getDeserializer();
+        const FwSizeType recordSize = static_cast<FwSizeType>(Svc::GroupConfigEntry::SERIALIZED_SIZE);
+        const FwSizeType maxRecords = static_cast<FwSizeType>(fwBuffer.getSize()) / recordSize;
+        Fw::SerializeStatus status = Fw::FW_SERIALIZE_OK;
+        for (FwSizeType record = 0; (record < maxRecords) and (status == Fw::FW_SERIALIZE_OK); record++) {
+            Svc::GroupConfigEntry entry;
+            status = deserializer.deserializeTo(entry);
+            if (status != Fw::FW_SERIALIZE_OK) {
+                break;
+            }
+            const Svc::TelemetrySection section = entry.get_section();
+            const FwChanIdType group = entry.get_tlmGroup();
+            // Enum validity was checked by deserialization; the section/group ranges remain
+            if (section < 0 or section >= TelemetrySection::NUM_SECTIONS or
+                group > MAX_CONFIGURABLE_TLMPACKETIZER_GROUP) {
+                this->log_WARNING_LO_GroupReloadRecordSkipped(section, group);
+            } else {
+                this->m_groupConfigs[static_cast<FwSizeType>(section.e)][group] = entry.get_config();
+            }
+        }
+        // Trailing bytes that do not form a whole record are a malformed buffer
+        if ((status == Fw::FW_SERIALIZE_OK) and (deserializer.getDeserializeSizeLeft() != 0)) {
+            status = Fw::FW_DESERIALIZE_FORMAT_ERROR;
+        }
+        if (status != Fw::FW_SERIALIZE_OK) {
+            Fw::DeserialStatus reported(static_cast<Fw::DeserialStatus::T>(status));
+            if (not reported.isValid()) {
+                reported = Fw::DeserialStatus::FORMAT_ERROR;
+            }
+            this->log_WARNING_HI_GroupConfigReloadFailed(reported);
+        }
+    } else {
+        this->log_WARNING_HI_GroupConfigReloadFailed(Fw::DeserialStatus::BUFFER_EMPTY);
+    }
+    this->groupConfigReturnOut_out(0, fwBuffer);
+}
+
+void TlmPacketizer ::groupConfigReturnIn_handler(FwIndexType portNum, Fw::Buffer& fwBuffer) {
+    // SDD requires the whole mirror path wired or none; return buffers go back to the same pool to free
+    FW_ASSERT(this->isConnected_deallocate_OutputPort(0));
+    this->deallocate_out(0, fwBuffer);
+}
+
 void TlmPacketizer::missingChannel(FwChanIdType id) {
     // search to see if missing channel has already been sent
     for (FwChanIdType slot = 0; slot < TLMPACKETIZER_MAX_MISSING_TLM_CHECK; slot++) {
@@ -822,17 +909,6 @@ Fw::SerializeStatus TlmPacketizer::deserializeParam(const FwPrmIdType base_id,
                 }
                 return status;
             }
-            case PARAMID_SECTION_CONFIGS: {
-                Svc::TlmPacketizer_SectionConfigs loaded;
-                Fw::SerializeStatus status = buff.deserializeTo(loaded);
-                if ((status == Fw::FW_SERIALIZE_OK) and (buff.getDeserializeSizeLeft() != 0)) {
-                    status = Fw::FW_DESERIALIZE_SIZE_MISMATCH;
-                }
-                if (status == Fw::FW_SERIALIZE_OK) {
-                    this->m_groupConfigs = loaded;
-                }
-                return status;
-            }
             default:
                 FW_ASSERT(false, static_cast<FwAssertArgType>(local_id));
         }
@@ -846,8 +922,6 @@ Fw::SerializeStatus TlmPacketizer::serializeParam(const FwPrmIdType base_id,
     switch (local_id) {
         case PARAMID_SECTION_ENABLED:
             return buff.serializeFrom(this->m_sectionEnabled);
-        case PARAMID_SECTION_CONFIGS:
-            return buff.serializeFrom(this->m_groupConfigs);
         default:
             FW_ASSERT(false, static_cast<FwAssertArgType>(local_id));
     }

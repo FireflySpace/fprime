@@ -91,15 +91,14 @@ class TlmPacketizerTester : public TlmPacketizerGTestBase {
     //!
     void sectionEnabledParameterTest(void);
 
-    //! Parameter test: SECTIONS_CONFIG
-    //!
-    void sectionConfigParameterTest(void);
+    //! Group-config test: CONFIGURE_GROUP_SEND, GET_GROUP_CONFIG report, and groupConfigIn reload
+    void groupConfigTest(void);
 
     //! Commanding test: verify SET_LEVEL invalid-level returns VALIDATION_ERROR
     void setLevelInvalidTest(void);
 
-//! Overflow the Run message queue and verify it drops instead of asserting
-void runQueueOverflowTest(void);
+    //! Overflow the Run message queue and verify it drops instead of asserting
+    void runQueueOverflowTest(void);
 
     //! Duplicate channel ID across packets with identical size is accepted
     void duplicateChannelIdMatchingSizeTest(void);
@@ -147,7 +146,7 @@ void runQueueOverflowTest(void);
     //! Send-state resolution test: packet -> group -> section enable for every TlmSendState combination
     void sendStateResolutionTest(void);
 
-    //! Stored-parameter shape test: a SECTION_CONFIGS value of a different serialized size is rejected
+    //! Stored-parameter shape test: a SECTION_ENABLED value of a different serialized size is rejected
     //! rather than loaded as a scrambled table
     void staleParameterShapeTest(void);
 
