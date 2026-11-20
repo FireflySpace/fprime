@@ -315,6 +315,74 @@ TEST(ParameterDbTest, PrmShorterSaveDoesNotCorrupt) {
     tester.runShorterSaveDoesNotCorrupt();
 }
 
+TEST(ParameterDbTest, SafeDefaultsWholesaleOnFailedLoad) {
+    Svc::PrmDbImpl impl("PrmDbImpl");
+
+    impl.init(10, 0);
+    impl.configure("/prm/TestFile.prm");
+    impl.configureSandbox("/prm");
+
+    Svc::PrmDbTester tester(impl);
+
+    tester.init();
+
+    // connect ports
+    connectPorts(impl, tester);
+
+    tester.runSafeDefaultsWholesaleOnFailedLoad();
+}
+
+TEST(ParameterDbTest, SafeDefaultsMissingOnlyOnGoodLoad) {
+    Svc::PrmDbImpl impl("PrmDbImpl");
+
+    impl.init(10, 0);
+    impl.configure("/prm/TestFile.prm");
+    impl.configureSandbox("/prm");
+
+    Svc::PrmDbTester tester(impl);
+
+    tester.init();
+
+    // connect ports
+    connectPorts(impl, tester);
+
+    tester.runSafeDefaultsMissingOnlyOnGoodLoad();
+}
+
+TEST(ParameterDbTest, SafeDefaultsEmptyBlobNoOp) {
+    Svc::PrmDbImpl impl("PrmDbImpl");
+
+    impl.init(10, 0);
+    impl.configure("/prm/TestFile.prm");
+    impl.configureSandbox("/prm");
+
+    Svc::PrmDbTester tester(impl);
+
+    tester.init();
+
+    // connect ports
+    connectPorts(impl, tester);
+
+    tester.runSafeDefaultsEmptyBlobNoOp();
+}
+
+TEST(ParameterDbTest, SafeDefaultsParseError) {
+    Svc::PrmDbImpl impl("PrmDbImpl");
+
+    impl.init(10, 0);
+    impl.configure("/prm/TestFile.prm");
+    impl.configureSandbox("/prm");
+
+    Svc::PrmDbTester tester(impl);
+
+    tester.init();
+
+    // connect ports
+    connectPorts(impl, tester);
+
+    tester.runSafeDefaultsParseError();
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
