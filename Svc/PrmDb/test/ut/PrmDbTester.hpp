@@ -36,10 +36,17 @@ class PrmDbTester : public PrmDbGTestBase {
     void runPrmFileLoadSandboxViolation();
     void runShorterSaveDoesNotCorrupt();
 
+    void runSafeDefaultsWholesaleOnFailedLoad();
+    void runSafeDefaultsMissingOnlyOnGoodLoad();
+    void runSafeDefaultsEmptyBlobNoOp();
+    void runSafeDefaultsParseError();
+
     void runRefPrmFile();
 
   private:
     bool dbEqual();
+    // Serialize the active DB to an in-memory .dat image via PRM_SAVE_FILE.
+    void saveActiveToImage(U8* imgOut, FwSizeType& imgLen);
 
     //! Handler for from_pingOut
     //!

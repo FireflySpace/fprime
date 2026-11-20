@@ -1541,6 +1541,145 @@ void PrmDbTester::runShorterSaveDoesNotCorrupt() {
     EXPECT_EQ(Fw::ParamValid::INVALID, this->invoke_to_getPrm(0, ID_C, pBuff).e);
 }
 
+void PrmDbTester::saveActiveToImage(U8* imgOut, FwSizeType& imgLen) {
+    Os::Stub::File::Test::StaticData::setWriteResult(m_io_data, sizeof m_io_data);
+    Os::Stub::File::Test::StaticData::setNextStatus(Os::File::OP_OK);
+    this->clearEvents();
+    this->clearHistory();
+    this->sendCmd_PRM_SAVE_FILE(0, 99);
+    Fw::QueuedComponentBase::MsgDispatchStatus stat = this->m_impl.doDispatch();
+    EXPECT_EQ(stat, Fw::QueuedComponentBase::MSG_DISPATCH_OK);
+    imgLen = Os::Stub::File::Test::StaticData::data.pointer;
+    ASSERT_GT(imgLen, static_cast<FwSizeType>(sizeof(U32)));
+    std::memcpy(imgOut, m_io_data, imgLen);
+}
+
+void PrmDbTester::runSafeDefaultsWholesaleOnFailedLoad() {
+    Fw::ParamBuffer pb;
+    const FwPrmIdType idA = 0x1000;
+    const F64 valA = 120.0;
+    const FwPrmIdType idB = 0x2000;
+    const U32 valB = 250;
+
+    // Build the compiled-in safe image from a known 2-parameter set.
+    this->m_impl.clearDb(PrmDbType::DB_ACTIVE);
+    pb.resetSer();
+    EXPECT_EQ(Fw::FW_SERIALIZE_OK, pb.serializeFrom(valA));
+    this->m_impl.updateAddPrmImpl(idA, pb, PrmDbType::DB_ACTIVE);
+    pb.resetSer();
+    EXPECT_EQ(Fw::FW_SERIALIZE_OK, pb.serializeFrom(valB));
+    this->m_impl.updateAddPrmImpl(idB, pb, PrmDbType::DB_ACTIVE);
+
+    U8 img[PRMDB_IMPL_TESTER_MAX_READ_BUFFER];
+    FwSizeType imgLen = 0;
+    this->saveActiveToImage(img, imgLen);
+
+    // A failed on-disk load left ACTIVE holding only a stale partial value.
+    this->m_impl.clearDb(PrmDbType::DB_ACTIVE);
+    const FwPrmIdType idStale = 0x9999;
+    pb.resetSer();
+    EXPECT_EQ(Fw::FW_SERIALIZE_OK, pb.serializeFrom(static_cast<U32>(0xDEAD)));
+    this->m_impl.updateAddPrmImpl(idStale, pb, PrmDbType::DB_ACTIVE);
+
+    // Failed load => all-or-nothing: drop the partial DB, seed the full safe set.
+    this->m_impl.loadSafeDefaults(img, imgLen, false);
+
+    EXPECT_EQ(this->m_impl.m_activeDb->getSize(), 2);
+    pb.resetSer();
+    EXPECT_EQ(Fw::ParamValid::INVALID, this->invoke_to_getPrm(0, idStale, pb).e);
+
+    pb.resetSer();
+    EXPECT_EQ(Fw::ParamValid::VALID, this->invoke_to_getPrm(0, idA, pb).e);
+    F64 gotA = 0.0;
+    EXPECT_EQ(Fw::FW_SERIALIZE_OK, pb.deserializeTo(gotA));
+    EXPECT_EQ(gotA, valA);
+
+    pb.resetSer();
+    EXPECT_EQ(Fw::ParamValid::VALID, this->invoke_to_getPrm(0, idB, pb).e);
+    U32 gotB = 0;
+    EXPECT_EQ(Fw::FW_SERIALIZE_OK, pb.deserializeTo(gotB));
+    EXPECT_EQ(gotB, valB);
+}
+
+void PrmDbTester::runSafeDefaultsMissingOnlyOnGoodLoad() {
+    Fw::ParamBuffer pb;
+    const FwPrmIdType idA = 0x1000;
+    const F64 safeValA = 120.0;
+    const FwPrmIdType idB = 0x2000;
+    const U32 safeValB = 250;
+
+    // Build the safe image (idA, idB).
+    this->m_impl.clearDb(PrmDbType::DB_ACTIVE);
+    pb.resetSer();
+    EXPECT_EQ(Fw::FW_SERIALIZE_OK, pb.serializeFrom(safeValA));
+    this->m_impl.updateAddPrmImpl(idA, pb, PrmDbType::DB_ACTIVE);
+    pb.resetSer();
+    EXPECT_EQ(Fw::FW_SERIALIZE_OK, pb.serializeFrom(safeValB));
+    this->m_impl.updateAddPrmImpl(idB, pb, PrmDbType::DB_ACTIVE);
+
+    U8 img[PRMDB_IMPL_TESTER_MAX_READ_BUFFER];
+    FwSizeType imgLen = 0;
+    this->saveActiveToImage(img, imgLen);
+
+    // A good on-disk load already supplied idA with its own (different) value.
+    this->m_impl.clearDb(PrmDbType::DB_ACTIVE);
+    const F64 fileValA = 60.0;
+    pb.resetSer();
+    EXPECT_EQ(Fw::FW_SERIALIZE_OK, pb.serializeFrom(fileValA));
+    this->m_impl.updateAddPrmImpl(idA, pb, PrmDbType::DB_ACTIVE);
+
+    // Good load => backfill missing ids only; the file's value for idA must win.
+    this->m_impl.loadSafeDefaults(img, imgLen, true);
+
+    EXPECT_EQ(this->m_impl.m_activeDb->getSize(), 2);
+    pb.resetSer();
+    EXPECT_EQ(Fw::ParamValid::VALID, this->invoke_to_getPrm(0, idA, pb).e);
+    F64 gotA = 0.0;
+    EXPECT_EQ(Fw::FW_SERIALIZE_OK, pb.deserializeTo(gotA));
+    EXPECT_EQ(gotA, fileValA);
+
+    pb.resetSer();
+    EXPECT_EQ(Fw::ParamValid::VALID, this->invoke_to_getPrm(0, idB, pb).e);
+    U32 gotB = 0;
+    EXPECT_EQ(Fw::FW_SERIALIZE_OK, pb.deserializeTo(gotB));
+    EXPECT_EQ(gotB, safeValB);
+}
+
+void PrmDbTester::runSafeDefaultsEmptyBlobNoOp() {
+    Fw::ParamBuffer pb;
+    const FwPrmIdType id = 0x55;
+    const U32 val = 0x1234;
+
+    this->m_impl.clearDb(PrmDbType::DB_ACTIVE);
+    pb.resetSer();
+    EXPECT_EQ(Fw::FW_SERIALIZE_OK, pb.serializeFrom(val));
+    this->m_impl.updateAddPrmImpl(id, pb, PrmDbType::DB_ACTIVE);
+
+    // Header-only image: nothing to seed, so even a failed load leaves ACTIVE untouched.
+    U8 emptyImg[sizeof(U32)] = {0, 0, 0, 0};
+    this->m_impl.loadSafeDefaults(emptyImg, sizeof(emptyImg), false);
+    EXPECT_EQ(this->m_impl.m_activeDb->getSize(), 1);
+
+    // Null / too-short buffers return early without touching ACTIVE.
+    this->m_impl.loadSafeDefaults(nullptr, 64, false);
+    this->m_impl.loadSafeDefaults(emptyImg, sizeof(U32) - 1, false);
+    EXPECT_EQ(this->m_impl.m_activeDb->getSize(), 1);
+
+    pb.resetSer();
+    EXPECT_EQ(Fw::ParamValid::VALID, this->invoke_to_getPrm(0, id, pb).e);
+}
+
+void PrmDbTester::runSafeDefaultsParseError() {
+    this->m_impl.clearDb(PrmDbType::DB_ACTIVE);
+    // 4-byte CRC header then a byte where the 0xA5 record delimiter is required.
+    U8 bad[8] = {0, 0, 0, 0, 0x00, 0, 0, 0};
+    this->clearEvents();
+    // Good load so the parse runs without the wholesale clear; the bad delimiter is reported.
+    this->m_impl.loadSafeDefaults(bad, sizeof(bad), true);
+    ASSERT_EVENTS_PrmFileReadError_SIZE(1);
+    ASSERT_EVENTS_PrmFileReadError(0, PrmReadError::DELIMITER_VALUE, 0, 0x00);
+}
+
 PrmDbTester* PrmDbTester::PrmDbTestFile::s_tester = nullptr;
 
 void PrmDbTester::PrmDbTestFile::setTester(Svc::PrmDbTester* tester) {
