@@ -7,6 +7,7 @@
 #ifndef FW_EXTERNAL_PARAM_TYPES_HPP
 #define FW_EXTERNAL_PARAM_TYPES_HPP
 
+#include <Fw/Cmd/CmdResponseEnumAc.hpp>
 #include <Fw/Prm/ParamValidEnumAc.hpp>
 #include <config/FpConfig.hpp>
 #include "PrmBuffer.hpp"
@@ -24,14 +25,15 @@ class ParamExternalDelegate {
     //!
     //! \param base_id: The component base ID of the parameter being deserialized
     //! \param local_id: The local parameter ID of the parameter being deserialized
-    //! \param prmStat: The parameter status of the parameter being deserialized
+    //! \param prmStat: In/out. Caller requests a validity (VALID); the delegate writes back the
+    //!   resulting validity of the backing store
     //! \param buff: The buffer contained the serialized parameter
     //!
-    //! \return: The status of the deserialize operation
-    virtual SerializeStatus deserializeParam(const FwPrmIdType base_id,
-                                             const FwPrmIdType local_id,
-                                             const ParamValid prmStat,
-                                             SerialBufferBase& buff) = 0;
+    //! \return: CmdResponse::OK if the update was accepted, VALIDATION_ERROR if rejected
+    virtual CmdResponse deserializeParam(const FwPrmIdType base_id,
+                                         const FwPrmIdType local_id,
+                                         ParamValid& prmStat,
+                                         SerialBufferBase& buff) = 0;
 
     //! Serialize a parameter into a parameter buffer
     //!

@@ -278,10 +278,10 @@ class TlmPacketizer final : public TlmPacketizerComponentBase, public Fw::ParamE
                                        const FwPrmIdType local_id,
                                        Fw::SerialBufferBase& buff) const override;
 
-    Fw::SerializeStatus deserializeParam(const FwPrmIdType base_id,
-                                         const FwPrmIdType local_id,
-                                         const Fw::ParamValid prmStat,
-                                         Fw::SerialBufferBase& buff) override;
+    Fw::CmdResponse deserializeParam(const FwPrmIdType base_id,
+                                     const FwPrmIdType local_id,
+                                     Fw::ParamValid& prmStat,
+                                     Fw::SerialBufferBase& buff) override;
 
   private:
     //! Handler implementation for configureSectionGroupRate

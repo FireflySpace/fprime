@@ -803,41 +803,42 @@ void TlmPacketizer::missingChannel(FwChanIdType id) {
     }
 }
 
-Fw::SerializeStatus TlmPacketizer::deserializeParam(const FwPrmIdType base_id,
-                                                    const FwPrmIdType local_id,
-                                                    const Fw::ParamValid prmStat,
-                                                    Fw::SerialBufferBase& buff) {
+Fw::CmdResponse TlmPacketizer::deserializeParam(const FwPrmIdType base_id,
+                                                const FwPrmIdType local_id,
+                                                Fw::ParamValid& prmStat,
+                                                Fw::SerialBufferBase& buff) {
+    Fw::SerializeStatus status = Fw::SerializeStatus::FW_DESERIALIZE_TYPE_MISMATCH;
     if (FW_PARAM_OK(prmStat)) {
         switch (local_id) {
             // A stored value of a different shape (e.g. saved by a previous FSW load) must not load as a scrambled
             // table
             case PARAMID_SECTION_ENABLED: {
                 Svc::TlmPacketizer_SectionEnabled loaded;
-                Fw::SerializeStatus status = buff.deserializeTo(loaded);
+                status = buff.deserializeTo(loaded);
                 if ((status == Fw::FW_SERIALIZE_OK) and (buff.getDeserializeSizeLeft() != 0)) {
                     status = Fw::FW_DESERIALIZE_SIZE_MISMATCH;
                 }
                 if (status == Fw::FW_SERIALIZE_OK) {
                     this->m_sectionEnabled = loaded;
                 }
-                return status;
+                break;
             }
             case PARAMID_SECTION_CONFIGS: {
                 Svc::TlmPacketizer_SectionConfigs loaded;
-                Fw::SerializeStatus status = buff.deserializeTo(loaded);
+                status = buff.deserializeTo(loaded);
                 if ((status == Fw::FW_SERIALIZE_OK) and (buff.getDeserializeSizeLeft() != 0)) {
                     status = Fw::FW_DESERIALIZE_SIZE_MISMATCH;
                 }
                 if (status == Fw::FW_SERIALIZE_OK) {
                     this->m_groupConfigs = loaded;
                 }
-                return status;
+                break;
             }
             default:
                 FW_ASSERT(false, static_cast<FwAssertArgType>(local_id));
         }
     }
-    return Fw::SerializeStatus::FW_DESERIALIZE_TYPE_MISMATCH;
+    return (status == Fw::FW_SERIALIZE_OK) ? Fw::CmdResponse::OK : Fw::CmdResponse::VALIDATION_ERROR;
 }
 
 Fw::SerializeStatus TlmPacketizer::serializeParam(const FwPrmIdType base_id,
