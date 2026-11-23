@@ -2629,16 +2629,18 @@ void TlmPacketizerTester ::staleParameterShapeTest() {
     Fw::ParamBuffer stale;
     ASSERT_EQ(Fw::FW_SERIALIZE_OK, stale.serializeFrom(before));
     ASSERT_EQ(Fw::FW_SERIALIZE_OK, stale.serializeFrom(static_cast<U32>(0xDEADBEEF)));
+    Fw::ParamValid staleStat = Fw::ParamValid::VALID;
     ASSERT_EQ(
-        Fw::FW_DESERIALIZE_SIZE_MISMATCH,
-        this->component.deserializeParam(0, TlmPacketizer::PARAMID_SECTION_CONFIGS, Fw::ParamValid::VALID, stale));
+        Fw::CmdResponse::VALIDATION_ERROR,
+        this->component.deserializeParam(0, TlmPacketizer::PARAMID_SECTION_CONFIGS, staleStat, stale));
     ASSERT_EQ(before, this->component.m_groupConfigs);
 
     // A stored value shorter than the current shape is rejected by deserialization itself
     Fw::ParamBuffer truncated;
     ASSERT_EQ(Fw::FW_SERIALIZE_OK, truncated.serializeFrom(static_cast<U8>(0)));
-    ASSERT_NE(Fw::FW_SERIALIZE_OK, this->component.deserializeParam(0, TlmPacketizer::PARAMID_SECTION_CONFIGS,
-                                                                    Fw::ParamValid::VALID, truncated));
+    Fw::ParamValid truncatedStat = Fw::ParamValid::VALID;
+    ASSERT_EQ(Fw::CmdResponse::VALIDATION_ERROR,
+              this->component.deserializeParam(0, TlmPacketizer::PARAMID_SECTION_CONFIGS, truncatedStat, truncated));
     ASSERT_EQ(before, this->component.m_groupConfigs);
 
     // A value of the current shape loads
@@ -2646,8 +2648,9 @@ void TlmPacketizerTester ::staleParameterShapeTest() {
     Svc::TlmPacketizer_SectionConfigs silenced = before;
     silenced[0][0].set_sendState(Svc::TlmSendState::SEND_NEVER);
     ASSERT_EQ(Fw::FW_SERIALIZE_OK, current.serializeFrom(silenced));
-    ASSERT_EQ(Fw::FW_SERIALIZE_OK, this->component.deserializeParam(0, TlmPacketizer::PARAMID_SECTION_CONFIGS,
-                                                                    Fw::ParamValid::VALID, current));
+    Fw::ParamValid currentStat = Fw::ParamValid::VALID;
+    ASSERT_EQ(Fw::CmdResponse::OK,
+              this->component.deserializeParam(0, TlmPacketizer::PARAMID_SECTION_CONFIGS, currentStat, current));
     ASSERT_EQ(silenced, this->component.m_groupConfigs);
 
     // SECTION_ENABLED is guarded the same way
@@ -2655,8 +2658,9 @@ void TlmPacketizerTester ::staleParameterShapeTest() {
     Fw::ParamBuffer staleEnabled;
     ASSERT_EQ(Fw::FW_SERIALIZE_OK, staleEnabled.serializeFrom(enabledBefore));
     ASSERT_EQ(Fw::FW_SERIALIZE_OK, staleEnabled.serializeFrom(static_cast<U8>(0)));
-    ASSERT_EQ(Fw::FW_DESERIALIZE_SIZE_MISMATCH,
-              this->component.deserializeParam(0, TlmPacketizer::PARAMID_SECTION_ENABLED, Fw::ParamValid::VALID,
+    Fw::ParamValid staleEnabledStat = Fw::ParamValid::VALID;
+    ASSERT_EQ(Fw::CmdResponse::VALIDATION_ERROR,
+              this->component.deserializeParam(0, TlmPacketizer::PARAMID_SECTION_ENABLED, staleEnabledStat,
                                                staleEnabled));
     ASSERT_EQ(enabledBefore, this->component.m_sectionEnabled);
 }

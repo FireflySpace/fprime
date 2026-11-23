@@ -147,10 +147,10 @@ void PassiveTestTester ::from_prmSetIn_handler(const FwIndexType portNum, FwPrmI
 // Unit test implementation of external parameter delegate serialization/deserialization
 // ----------------------------------------------------------------------
 
-Fw::SerializeStatus PassiveTestTester::PassiveTestComponentBaseParamExternalDelegate ::deserializeParam(
+Fw::CmdResponse PassiveTestTester::PassiveTestComponentBaseParamExternalDelegate ::deserializeParam(
     const FwPrmIdType base_id,
     const FwPrmIdType local_id,
-    const Fw::ParamValid prmStat,
+    Fw::ParamValid& prmStat,
     Fw::SerialBufferBase& buff) {
     Fw::SerializeStatus stat;
     (void)base_id;
@@ -186,7 +186,12 @@ Fw::SerializeStatus PassiveTestTester::PassiveTestComponentBaseParamExternalDele
             FW_ASSERT(false, static_cast<FwAssertArgType>(local_id));
     }
 
-    return stat;
+    if (stat != Fw::FW_SERIALIZE_OK) {
+        prmStat = Fw::ParamValid::INVALID;
+        return Fw::CmdResponse::VALIDATION_ERROR;
+    }
+
+    return Fw::CmdResponse::OK;
 }
 
 Fw::SerializeStatus PassiveTestTester::PassiveTestComponentBaseParamExternalDelegate ::serializeParam(
