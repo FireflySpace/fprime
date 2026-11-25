@@ -3752,10 +3752,12 @@ TEST_F(FpySequencerTester, onStatementDispatchedFiresPerStatement) {
     add_NO_OP();
     add_NO_OP();
     probe_sequenceObj() = seq;
+    probe_setSequenceFilePath("seqs/a.bin");
     probe_dispatch();
     probe_dispatch();
     covProbe.deinit();  // release the queue init() allocated (LeakSanitizer)
     ASSERT_EQ(covProbe.dispatched, (std::vector<U32>{0, 1}));
+    ASSERT_EQ(covProbe.paths, (std::vector<std::string>{"seqs/a.bin", "seqs/a.bin"}));
 }
 
 // caught one bug
