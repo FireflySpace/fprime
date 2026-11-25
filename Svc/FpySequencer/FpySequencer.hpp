@@ -884,6 +884,10 @@ class FpySequencer : public FpySequencerComponentBase {
     //! Default no-op; override to observe execution, e.g. for coverage.
     virtual void onStatementDispatched(U32 index) { (void)index; }
 
+    //! Path of the sequence being run, including SEQ_BASE_DIR, e.g. so an
+    //! onStatementDispatched override knows which sequence the index is from.
+    const Fw::StringBase& sequenceFilePath() const { return this->m_sequenceFilePath; }
+
   private:
     // returns the index of the current statement
     U32 currentStatementIdx();

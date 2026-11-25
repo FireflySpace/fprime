@@ -14,15 +14,20 @@
 
 namespace Svc {
 
-//! FpySequencer subclass that records the indices passed to onStatementDispatched,
-//! so a test can assert the coverage hook fires per dispatched statement.
+//! FpySequencer subclass that records the index and sequence path passed to and
+//! seen by onStatementDispatched, so a test can assert the coverage hook fires
+//! per dispatched statement.
 class CoverageProbe : public FpySequencer {
   public:
     using FpySequencer::FpySequencer;
     std::vector<U32> dispatched;
+    std::vector<std::string> paths;
 
   protected:
-    void onStatementDispatched(U32 index) override { this->dispatched.push_back(index); }
+    void onStatementDispatched(U32 index) override {
+        this->dispatched.push_back(index);
+        this->paths.push_back(this->sequenceFilePath().toChar());
+    }
 };
 
 class FpySequencerTester : public FpySequencerGTestBase, public ::testing::Test {
@@ -82,6 +87,9 @@ class FpySequencerTester : public FpySequencerGTestBase, public ::testing::Test 
 
     //! Load a sequence into covProbe (friend access to its private member).
     Fpy::Sequence& probe_sequenceObj() { return this->covProbe.m_sequenceObj; }
+
+    //! Set the path covProbe reports as running (friend access).
+    void probe_setSequenceFilePath(const char* path) { this->covProbe.m_sequenceFilePath = path; }
 
     //! Dispatch one statement on covProbe.
     Signal probe_dispatch() { return this->covProbe.dispatchStatement(); }
